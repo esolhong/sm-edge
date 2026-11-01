@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>회사소개 | 스마트엣지</title>
+<meta name="description" content="주식회사 스마트엣지(SMART EDGE). 머신비전용 LED 조명과 제어기 설계·제조, 제어보드 개발 용역, 스마트 솔루션 개발, IPC 교육과 일렉트레이너.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#0d1220;--bg2:#131a2d;--card:#182037;--fg:#f3f5fa;--muted:#9aa4bb;--accent:#ffc83d;--line:rgba(255,255,255,.12)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--fg);font-family:'Noto Sans KR',system-ui,sans-serif;line-height:1.7;font-weight:400}
+  a{color:inherit}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+  header{position:sticky;top:0;z-index:10;background:rgba(13,18,32,.88);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;height:64px;gap:16px}
+  .logo{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:700;letter-spacing:.12em}
+  .logo span{color:var(--accent)}
+  nav{display:flex;gap:22px;font-size:15px;overflow-x:auto}
+  nav a{text-decoration:none;color:var(--muted);white-space:nowrap}
+  nav a:hover{color:var(--fg)}
+  .hero{background:radial-gradient(ellipse at 50% 0%,#1f2a48 0%,var(--bg) 70%);text-align:center;padding:110px 0 100px}
+  .eyebrow{font-size:14px;letter-spacing:.35em;color:var(--accent);font-weight:500;margin-bottom:14px}
+  .hero h1{font-size:clamp(30px,6vw,56px);font-weight:700;line-height:1.25;margin-bottom:20px}
+  .hero p{font-size:clamp(15px,2.3vw,18px);color:var(--muted);font-weight:300;max-width:620px;margin:0 auto}
+  .btns{margin-top:34px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+  .btn{display:inline-block;padding:12px 26px;border-radius:999px;text-decoration:none;font-weight:500;font-size:15px}
+  .btn.primary{background:var(--accent);color:#1a1405}
+  .btn.ghost{border:1px solid var(--line);color:var(--fg)}
+  section{padding:88px 0;border-top:1px solid var(--line)}
+  section.alt{background:var(--bg2)}
+  h2{font-size:clamp(24px,4vw,34px);font-weight:700;margin-bottom:10px}
+  .sub{color:var(--muted);margin-bottom:40px;max-width:680px}
+  .grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:24px}
+  .card h3{font-size:18px;margin-bottom:8px}
+  .card p{color:var(--muted);font-size:15px}
+  .num{color:var(--accent);font-size:13px;letter-spacing:.2em;font-weight:500;margin-bottom:10px}
+  .photo{aspect-ratio:4/3;border-radius:10px;margin-bottom:16px;background:repeating-linear-gradient(45deg,#1d2640 0 10px,#1a2239 10px 20px);
+         display:flex;align-items:center;justify-content:center;color:#5d6884;font-size:13px;border:1px dashed var(--line)}
+  .two{display:grid;grid-template-columns:1.2fr 1fr;gap:40px;align-items:start}
+  .two p{color:var(--muted);margin-bottom:14px}
+  ul.creds{list-style:none}
+  ul.creds li{padding:10px 0;border-bottom:1px solid var(--line);font-size:15px}
+  ul.creds li::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:12px;vertical-align:middle}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  td,th{padding:12px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{color:var(--muted);font-weight:400;width:110px}
+  .badge{display:inline-block;font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid var(--accent);color:var(--accent);margin-left:6px;vertical-align:middle}
+  .tags{display:flex;flex-wrap:wrap;gap:10px}
+  .tags span{padding:8px 16px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:15px}
+  footer{padding:30px 0;font-size:13px;color:var(--muted);border-top:1px solid var(--line);text-align:center;line-height:1.9}
+  @media (max-width:760px){
+    .two{grid-template-columns:1fr}
+    nav{gap:16px;font-size:14px}
+    .logo-text{display:none}
+    section{padding:64px 0}
+    .hero{padding:80px 0 72px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="index.html" aria-label="스마트엣지 홈">
+      <svg width="26" height="26" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6c-10.5 0-19 8.3-19 18.6 0 6.6 3.4 11.3 6.8 14.6 2 2 3.2 4.6 3.2 7.4V49h18v-2.4c0-2.8 1.2-5.4 3.2-7.4 3.4-3.3 6.8-8 6.8-14.6C51 14.3 42.5 6 32 6z" fill="#ffc83d"/><rect x="23" y="51" width="18" height="4" rx="2" fill="#c9d1e3"/><rect x="25" y="57" width="14" height="4" rx="2" fill="#c9d1e3"/></svg>
+      <span class="logo-text">SMART <span>EDGE</span></span>
+    </a>
+    <nav>
+      <a href="about.html" aria-current="page">회사소개</a>
+      <a href="index.html#business">사업분야</a>
+      <a href="index.html#products">제품</a>
+      <a href="index.html#education">교육·SW</a>
+      <a href="index.html#contact">문의</a>
+    </nav>
+  </div>
+</header>
+
+<section id="about" style="padding-top:64px">
+  <div class="wrap">
+    <h2>회사 소개</h2>
+    <p class="sub">스마트한 세상을 만들어 갑니다.</p>
+    <div class="two">
+      <div>
+        <p>주식회사 스마트엣지는 2025년 5월 설립된 전자 제어 전문 기업입니다. 스마트 홈, 스마트 팜, 스마트 공장, 의료기기 등 전자 제어가 필요한 모든 분야에서 설계부터 제조, 프로그램 개발까지 한 번에 해결합니다.</p>
+        <p>주력 제품은 머신비전용 LED 조명과 제어기이며, 고객사의 요구에 맞춘 제어 보드를 개발·납품합니다. 기구 가공은 검증된 협력사에서, 설계와 최종 조립은 자체에서 진행해 품질을 직접 책임집니다.</p>
+        <p>스마트엣지의 전신은 2011년 5월부터 운영해 온 이솔루션입니다. 이솔루션은 10년 넘게 비전용 조명을 판매하며 현장의 요구를 가까이서 쌓아 왔고, 그 경험이 스마트엣지 제품에 담겨 있습니다.</p>
+      </div>
+      <div class="card">
+        <div class="num">CEO</div>
+        <h3>대표이사 홍승표</h3>
+        <p style="margin-bottom:12px">전기/전자/기계 분야의 현장 기술을 갖춘 전문가입니다.</p>
+        <ul class="creds">
+          <li>전자기능장, 기계가공기능장</li>
+          <li>전국기능경기대회 전기 분야 입상</li>
+          <li>글로벌숙련기술진흥원 숙련기술전수위원</li>
+          <li>IPC 공인 트레이너</li>
+          <li>글로벌전자협회(GEA)/IPC 자문위원</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  주식회사 스마트엣지 · 대표이사 홍승표 · 인천광역시 남동구 구월로 336번길 9, 서광빌딩 4층 402호<br>
+  TEL 070-5015-0355 · hsp@sm-edge.com<br>
+  © 2026 SMART EDGE. All rights reserved.
+</footer>
+
+</body>
+</html>
