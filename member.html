@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>회원 | 스마트엣지</title>
+<meta name="description" content="스마트엣지 회원가입과 로그인. 회원은 LED 조명·제어장치 도면을 내려받을 수 있습니다.">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="assets/smartedge_icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/smartedge_icon_512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="index.html" aria-label="스마트엣지 홈">
+      <img src="assets/smartedge_icon.svg" width="34" height="34" alt="">
+      <span class="logo-text">SMART <span>EDGE</span></span>
+    </a>
+    <nav>
+      <a href="about.html">회사소개</a>
+      <a href="index.html#products">제품</a>
+      <a href="support.html">고객지원</a>
+      <a href="inquiry.html">고객문의</a>
+      <a href="member.html" id="nav-user" aria-current="page">로그인</a>
+    </nav>
+  </div>
+</header>
+
+<section class="page-head">
+  <div class="wrap narrow">
+    <div class="eyebrow">MEMBER</div>
+    <h1 id="page-title">회원 로그인</h1>
+    <p class="sub">회원으로 등록하시면 LED 조명·제어장치 도면(PDF·DXF·STEP)을 내려받을 수 있습니다.</p>
+    <div class="tabs" id="tabs">
+      <button data-t="login">로그인</button>
+      <button data-t="signup">회원가입</button>
+      <button data-t="mypage">내 정보</button>
+    </div>
+    <div class="msg" id="msg"></div>
+
+    <!-- 로그인 -->
+    <form id="f-login" data-pane="login" hidden>
+      <div class="row"><label>이메일</label><input type="email" name="email" required autocomplete="email"></div>
+      <div class="row"><label>비밀번호</label><input type="password" name="password" required autocomplete="current-password"></div>
+      <div class="btns"><button class="btn primary" type="submit">로그인</button><button class="btn ghost" type="button" id="btn-reset">비밀번호를 잊으셨나요?</button></div>
+    </form>
+
+    <!-- 회원가입 -->
+    <form id="f-signup" data-pane="signup" hidden>
+      <div class="cols">
+        <div class="row"><label>이름 <span class="req">*</span></label><input type="text" name="name" required maxlength="40" autocomplete="name"></div>
+        <div class="row"><label>연락처 <span class="req">*</span></label><input type="tel" name="phone" required maxlength="30" placeholder="010-0000-0000" autocomplete="tel"></div>
+      </div>
+      <div class="cols">
+        <div class="row"><label>회사명 <span class="req">*</span></label><input type="text" name="company" required maxlength="80" autocomplete="organization"></div>
+        <div class="row"><label>부서·직함</label><input type="text" name="title" maxlength="60"></div>
+      </div>
+      <div class="row"><label>이메일 (로그인 아이디) <span class="req">*</span></label><input type="email" name="email" required autocomplete="email"></div>
+      <div class="cols">
+        <div class="row"><label>비밀번호 (6자 이상) <span class="req">*</span></label><input type="password" name="password" required minlength="6" autocomplete="new-password"></div>
+        <div class="row"><label>비밀번호 확인 <span class="req">*</span></label><input type="password" name="password2" required minlength="6" autocomplete="new-password"></div>
+      </div>
+      <div class="consent">
+        <strong style="color:var(--fg)">개인정보 수집·이용 동의 (필수)</strong>
+        <table>
+          <tr><th>수집 항목</th><td>이름, 연락처, 이메일, 회사명, 부서·직함(선택)</td></tr>
+          <tr><th>이용 목적</th><td>회원 확인, 회원 전용 자료 제공, 문의 답변과 제품·기술 안내</td></tr>
+          <tr><th>보유 기간</th><td><strong style="color:var(--fg)">가입일(또는 마지막 연장일)부터 3년</strong>. 기간이 지나면 자동 삭제되며, 탈퇴 시 즉시 삭제합니다.</td></tr>
+        </table>
+        동의를 거부할 수 있으나, 이 경우 회원 전용 자료를 내려받을 수 없습니다. 자세한 내용은 <a href="privacy.html" target="_blank">개인정보처리방침</a>을 확인해 주세요.
+      </div>
+      <label class="check"><input type="checkbox" name="agree" required> 위 개인정보 수집·이용에 동의하며, 만 14세 이상입니다. (필수)</label>
+      <div class="btns"><button class="btn primary" type="submit">회원가입</button></div>
+    </form>
+
+    <!-- 내 정보 -->
+    <div data-pane="mypage" hidden>
+      <div id="my-guest"><p class="sub">로그인 후 이용할 수 있습니다.</p></div>
+      <div id="my-info" hidden>
+        <div class="card" style="margin-bottom:24px">
+          <table>
+            <tr><th style="width:130px">이메일</th><td id="my-email"></td></tr>
+            <tr><th>가입일</th><td id="my-created"></td></tr>
+            <tr><th>정보 보유기간</th><td><span id="my-expire"></span> <button class="btn ghost small" id="btn-extend" type="button">3년 연장</button></td></tr>
+          </table>
+        </div>
+        <form id="f-profile">
+      <div class="cols">
+        <div class="row"><label>이름 <span class="req">*</span></label><input type="text" name="name" required maxlength="40" autocomplete="name"></div>
+        <div class="row"><label>연락처 <span class="req">*</span></label><input type="tel" name="phone" required maxlength="30" placeholder="010-0000-0000" autocomplete="tel"></div>
+      </div>
+      <div class="cols">
+        <div class="row"><label>회사명 <span class="req">*</span></label><input type="text" name="company" required maxlength="80" autocomplete="organization"></div>
+        <div class="row"><label>부서·직함</label><input type="text" name="title" maxlength="60"></div>
+      </div>
+          <div class="btns"><button class="btn primary" type="submit">정보 수정</button><button class="btn ghost" type="button" id="btn-logout">로그아웃</button><button class="btn ghost" type="button" id="btn-withdraw" style="margin-left:auto">회원 탈퇴</button></div>
+        </form>
+      </div>
+      <form id="f-reg" hidden>
+        <p class="sub">회원 정보 보유기간(3년)이 지나 정보가 삭제되었거나, 아직 회원 정보가 없습니다. 아래 정보를 다시 등록하면 바로 이용할 수 있습니다.</p>
+      <div class="cols">
+        <div class="row"><label>이름 <span class="req">*</span></label><input type="text" name="name" required maxlength="40" autocomplete="name"></div>
+        <div class="row"><label>연락처 <span class="req">*</span></label><input type="tel" name="phone" required maxlength="30" placeholder="010-0000-0000" autocomplete="tel"></div>
+      </div>
+      <div class="cols">
+        <div class="row"><label>회사명 <span class="req">*</span></label><input type="text" name="company" required maxlength="80" autocomplete="organization"></div>
+        <div class="row"><label>부서·직함</label><input type="text" name="title" maxlength="60"></div>
+      </div>
+      <div class="consent">
+        <strong style="color:var(--fg)">개인정보 수집·이용 동의 (필수)</strong>
+        <table>
+          <tr><th>수집 항목</th><td>이름, 연락처, 이메일, 회사명, 부서·직함(선택)</td></tr>
+          <tr><th>이용 목적</th><td>회원 확인, 회원 전용 자료 제공, 문의 답변과 제품·기술 안내</td></tr>
+          <tr><th>보유 기간</th><td><strong style="color:var(--fg)">가입일(또는 마지막 연장일)부터 3년</strong>. 기간이 지나면 자동 삭제되며, 탈퇴 시 즉시 삭제합니다.</td></tr>
+        </table>
+        동의를 거부할 수 있으나, 이 경우 회원 전용 자료를 내려받을 수 없습니다. 자세한 내용은 <a href="privacy.html" target="_blank">개인정보처리방침</a>을 확인해 주세요.
+      </div>
+        <label class="check"><input type="checkbox" name="agree" required> 위 개인정보 수집·이용에 동의하며, 만 14세 이상입니다. (필수)</label>
+        <div class="btns"><button class="btn primary" type="submit">회원 정보 등록</button><button class="btn ghost" type="button" id="btn-logout2">로그아웃</button></div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<footer>
+  주식회사 스마트엣지 · 대표이사 홍승표 · 인천광역시 남동구 구월로 336번길 9, 서광빌딩 4층 402호<br>
+  TEL 070-5015-0355 · hsp@sm-edge.com · <a href="privacy.html"><strong>개인정보처리방침</strong></a><br>
+  © 2026 SMART EDGE. All rights reserved.
+</footer>
+<script type="module">
+import { ready, getFirebase, onUser, isAdmin, fmtDate, addYears, showMsg, hideMsg, koError, mountHeaderUser, NOT_READY_TEXT, RETENTION_YEARS } from "./assets/js/app.js";
+mountHeaderUser();
+
+const msg = document.getElementById("msg");
+const titles = { login: "회원 로그인", signup: "회원가입", mypage: "내 정보" };
+let cur = { user: null, member: null };
+
+function show(t) {
+  if (!titles[t]) t = "login";
+  document.querySelectorAll("[data-pane]").forEach((p) => (p.hidden = p.dataset.pane !== t));
+  document.querySelectorAll("#tabs button").forEach((b) => b.classList.toggle("on", b.dataset.t === t));
+  document.getElementById("page-title").textContent = titles[t];
+  hideMsg(msg);
+}
+document.getElementById("tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  history.replaceState(null, "", "#" + b.dataset.t); show(b.dataset.t);
+});
+window.addEventListener("hashchange", () => show(location.hash.slice(1)));
+show(location.hash.slice(1));
+
+if (!ready) {
+  showMsg(msg, NOT_READY_TEXT, "info");
+  document.querySelectorAll("form button[type=submit]").forEach((b) => (b.disabled = true));
+}
+
+const val = (f, n) => (f.elements[n]?.value || "").trim();
+const profileOf = (f) => ({ name: val(f, "name"), phone: val(f, "phone"), company: val(f, "company"), title: val(f, "title") });
+function fillProfile(f, m) { ["name", "phone", "company", "title"].forEach((n) => (f.elements[n].value = m?.[n] || "")); }
+
+async function writeMember(fb, user, profile, isNew) {
+  const { F } = fb;
+  const now = new Date();
+  const data = {
+    ...profile,
+    email: user.email,
+    consentAt: F.serverTimestamp(),
+    consentVersion: "2026-11-02",
+    expireAt: F.Timestamp.fromDate(addYears(now, RETENTION_YEARS))
+  };
+  if (isNew) data.createdAt = F.serverTimestamp();
+  await F.setDoc(F.doc(fb.db, "members", user.uid), data, { merge: !isNew });
+}
+
+// 로그인
+document.getElementById("f-login").addEventListener("submit", async (e) => {
+  e.preventDefault(); const f = e.target; const fb = await getFirebase(); if (!fb) return;
+  try {
+    await fb.A.signInWithEmailAndPassword(fb.auth, val(f, "email"), f.elements.password.value);
+    location.href = new URLSearchParams(location.search).get("next") || "support.html";
+  } catch (err) { showMsg(msg, koError(err), "err"); }
+});
+
+document.getElementById("btn-reset").addEventListener("click", async () => {
+  const fb = await getFirebase(); if (!fb) return;
+  const email = val(document.getElementById("f-login"), "email");
+  if (!email) { showMsg(msg, "이메일 칸에 가입한 이메일을 먼저 입력해 주세요.", "info"); return; }
+  try { await fb.A.sendPasswordResetEmail(fb.auth, email); showMsg(msg, "비밀번호 재설정 메일을 보냈습니다. 메일함을 확인해 주세요.", "ok"); }
+  catch (err) { showMsg(msg, koError(err), "err"); }
+});
+
+// 회원가입
+document.getElementById("f-signup").addEventListener("submit", async (e) => {
+  e.preventDefault(); const f = e.target; const fb = await getFirebase(); if (!fb) return;
+  if (f.elements.password.value !== f.elements.password2.value) { showMsg(msg, "비밀번호 확인이 일치하지 않습니다.", "err"); return; }
+  if (!f.elements.agree.checked) { showMsg(msg, "개인정보 수집·이용에 동의해 주세요.", "err"); return; }
+  const btn = f.querySelector("button[type=submit]"); btn.disabled = true;
+  try {
+    const cred = await fb.A.createUserWithEmailAndPassword(fb.auth, val(f, "email"), f.elements.password.value);
+    await writeMember(fb, cred.user, profileOf(f), true);
+    try { await fb.A.sendEmailVerification(cred.user); } catch (_) {}
+    showMsg(msg, "회원가입이 완료되었습니다. 이제 도면 자료를 내려받을 수 있습니다.", "ok");
+    setTimeout(() => (location.href = "support.html#drawings"), 1500);
+  } catch (err) { showMsg(msg, koError(err), "err"); btn.disabled = false; }
+});
+
+// 내 정보
+function renderMy() {
+  const { user, member } = cur;
+  document.getElementById("my-guest").hidden = !!user;
+  document.getElementById("my-info").hidden = !(user && member);
+  document.getElementById("f-reg").hidden = !(user && !member);
+  if (user && member) {
+    document.getElementById("my-email").textContent = user.email;
+    document.getElementById("my-created").textContent = fmtDate(member.createdAt);
+    document.getElementById("my-expire").textContent = fmtDate(member.expireAt) + "까지";
+    fillProfile(document.getElementById("f-profile"), member);
+  }
+}
+
+document.getElementById("f-profile").addEventListener("submit", async (e) => {
+  e.preventDefault(); const fb = await getFirebase();
+  try {
+    await fb.F.updateDoc(fb.F.doc(fb.db, "members", cur.user.uid), profileOf(e.target));
+    Object.assign(cur.member, profileOf(e.target)); showMsg(msg, "정보를 수정했습니다.", "ok");
+  } catch (err) { showMsg(msg, koError(err), "err"); }
+});
+
+document.getElementById("btn-extend").addEventListener("click", async () => {
+  if (!confirm(`개인정보 수집·이용에 다시 동의하고 보유기간을 오늘부터 ${RETENTION_YEARS}년으로 연장할까요?`)) return;
+  const fb = await getFirebase();
+  try {
+    const exp = addYears(new Date(), RETENTION_YEARS);
+    await fb.F.updateDoc(fb.F.doc(fb.db, "members", cur.user.uid), { expireAt: fb.F.Timestamp.fromDate(exp), consentAt: fb.F.serverTimestamp(), consentVersion: "2026-11-02" });
+    cur.member.expireAt = exp; renderMy(); showMsg(msg, "보유기간을 연장했습니다.", "ok");
+  } catch (err) { showMsg(msg, koError(err), "err"); }
+});
+
+document.getElementById("f-reg").addEventListener("submit", async (e) => {
+  e.preventDefault(); const f = e.target; const fb = await getFirebase();
+  if (!f.elements.agree.checked) { showMsg(msg, "개인정보 수집·이용에 동의해 주세요.", "err"); return; }
+  try { await writeMember(fb, cur.user, profileOf(f), true); location.reload(); }
+  catch (err) { showMsg(msg, koError(err), "err"); }
+});
+
+async function logout() { const fb = await getFirebase(); await fb.A.signOut(fb.auth); location.href = "support.html"; }
+document.getElementById("btn-logout").addEventListener("click", logout);
+document.getElementById("btn-logout2").addEventListener("click", logout);
+
+document.getElementById("btn-withdraw").addEventListener("click", async () => {
+  if (!confirm("회원 탈퇴 시 회원 정보가 즉시 삭제되며 되돌릴 수 없습니다. 탈퇴할까요?")) return;
+  const fb = await getFirebase();
+  try {
+    await fb.F.deleteDoc(fb.F.doc(fb.db, "members", cur.user.uid));
+    await fb.A.deleteUser(cur.user);
+    alert("탈퇴가 완료되었습니다. 그동안 이용해 주셔서 감사합니다."); location.href = "index.html";
+  } catch (err) {
+    if (err.code === "auth/requires-recent-login") {
+      alert("회원 정보는 삭제되었습니다. 로그인 계정까지 지우려면 다시 로그인한 뒤 탈퇴를 한 번 더 눌러 주세요.");
+      await fb.A.signOut(fb.auth); location.href = "member.html#login";
+    } else showMsg(msg, koError(err), "err");
+  }
+});
+
+onUser((user, member) => {
+  cur = { user, member };
+  if (user && isAdmin(user) && !member) {
+    document.getElementById("my-guest").hidden = false;
+    document.getElementById("my-guest").innerHTML = `<p class="sub">관리자 계정입니다. <a class="btn primary small" href="admin.html">관리자 페이지로</a> <button class="btn ghost small" id="adm-out">로그아웃</button></p>`;
+    document.getElementById("adm-out").onclick = logout;
+    document.getElementById("my-info").hidden = true; document.getElementById("f-reg").hidden = true;
+    return;
+  }
+  renderMy();
+  if (user && !location.hash) show("mypage");
+});
+</script>
+
+</body>
+</html>

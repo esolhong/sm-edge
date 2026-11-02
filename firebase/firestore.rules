@@ -1,0 +1,57 @@
+rules_version = '2';
+// 스마트엣지 홈페이지 Firestore 보안 규칙
+// Firebase 콘솔 → Firestore Database → 규칙 탭에 그대로 붙여 넣고 "게시"를 누르세요.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email in ['hsp@sm-edge.com']
+        && request.auth.token.email_verified == true;
+    }
+    // 보유기간은 지금부터 3년(+하루 여유) 이내여야 함
+    function validExpire(t) {
+      return t is timestamp && t > request.time && t <= request.time + duration.value(1097, 'd');
+    }
+    function str(v, max) { return v is string && v.size() <= max; }
+    function reqStr(v, max) { return str(v, max) && v.size() > 0; }
+
+    // ── 회원 정보: 본인과 관리자만 ──
+    match /members/{uid} {
+      function profileOk(d) {
+        return reqStr(d.name, 40) && reqStr(d.phone, 30) && reqStr(d.company, 80)
+          && (!('title' in d) || str(d.title, 60));
+      }
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create, update: if signedIn() && request.auth.uid == uid
+        && profileOk(request.resource.data)
+        && request.resource.data.email == request.auth.token.email
+        && validExpire(request.resource.data.expireAt)
+        && request.resource.data.keys().hasOnly(['name','phone','company','title','email','consentAt','consentVersion','createdAt','expireAt']);
+      allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
+    }
+
+    // ── 고객문의: 누구나 작성, 읽기는 작성 회원 본인과 관리자만 ──
+    match /inquiries/{id} {
+      allow create: if
+        request.resource.data.keys().hasOnly(['uid','category','name','company','phone','email','subject','body','status','answer','createdAt','expireAt'])
+        && (request.resource.data.uid == null || (signedIn() && request.resource.data.uid == request.auth.uid))
+        && reqStr(request.resource.data.category, 40)
+        && reqStr(request.resource.data.name, 40) && reqStr(request.resource.data.company, 80)
+        && reqStr(request.resource.data.phone, 30) && reqStr(request.resource.data.email, 120)
+        && reqStr(request.resource.data.subject, 120) && reqStr(request.resource.data.body, 5000)
+        && request.resource.data.status == 'new' && request.resource.data.answer == ''
+        && request.resource.data.createdAt == request.time
+        && validExpire(request.resource.data.expireAt);
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    // ── 자료 목록: 누구나 보기, 관리자만 등록 (파일 자체는 Storage 규칙이 보호) ──
+    match /files/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
