@@ -45,6 +45,7 @@
       <div class="tabs" id="tabs">
         <button data-t="inq" class="on">고객문의 <span id="new-count"></span></button>
         <button data-t="mem">회원</button>
+        <button data-t="ipc">IPC 자격</button>
         <button data-t="files">자료 관리</button>
       </div>
 
@@ -61,6 +62,15 @@
         </div>
         <div class="btns" style="margin:0 0 16px"><button class="btn primary small" id="btn-notice">선택한 회원에게 연장 안내 메일</button><button class="btn ghost small" id="btn-csv">엑셀(CSV)로 내려받기</button></div>
         <div class="table-wrap"><table class="list"><thead><tr><th><input type="checkbox" id="mem-all" title="전체 선택"></th><th>이름</th><th>회사</th><th>연락처</th><th>이메일</th><th>가입일</th><th>보유기간</th><th></th></tr></thead><tbody id="mem-list"></tbody></table></div>
+      </div>
+
+      <div data-pane="ipc" hidden>
+        <p class="sub" style="margin-bottom:16px">회원이 "내 정보"에 등록한 IPC 자격입니다. 갱신 안내에 동의한 회원만 표시됩니다.</p>
+        <div class="tabs" id="ipc-filter" style="margin-bottom:12px">
+          <button data-f="all">전체</button><button class="on" data-f="soon">만료 90일 이내</button><button data-f="expired">만료됨</button>
+        </div>
+        <div class="btns" style="margin:0 0 16px"><button class="btn primary small" id="btn-ipc-notice">선택한 회원에게 갱신 안내 메일</button><button class="btn ghost small" id="btn-ipc-csv">엑셀(CSV)로 내려받기</button></div>
+        <div class="table-wrap"><table class="list"><thead><tr><th><input type="checkbox" id="ipc-all" title="전체 선택"></th><th>이름 / 회사</th><th>연락처</th><th>자격</th><th>자격번호</th><th>만료일</th></tr></thead><tbody id="ipc-list"></tbody></table></div>
       </div>
 
       <div data-pane="files" hidden>
@@ -180,7 +190,7 @@ $("inq-list").onclick = async (e) => {
 async function loadMem() {
   const snap = await fb.F.getDocs(fb.F.query(fb.F.collection(fb.db, "members"), fb.F.orderBy("createdAt", "desc")));
   members = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  renderMem();
+  renderMem(); renderIpc();
 }
 let memFilter = "all";
 const DAY = 864e5;
@@ -199,6 +209,69 @@ function renderMem() {
     <td>${fmtDate(m.expireAt)} ${memState(m) === "expired" ? '<span class="badge muted">만료</span>' : memState(m) === "soon" ? '<span class="badge">만료 임박</span>' : ""}</td>
     <td class="act"><button class="btn ghost small" data-del="${m.id}">삭제</button></td></tr>`).join("") : `<tr><td colspan="8" class="empty">해당하는 회원이 없습니다.</td></tr>`;
 }
+// ── IPC 자격 ──
+let ipcFilter = "soon";
+function ipcRows() {
+  const rows = [];
+  members.filter((m) => m.ipcNotify && Array.isArray(m.ipc)).forEach((m) =>
+    m.ipc.forEach((c, i) => rows.push({ key: `${m.id}:${i}`, m, c, exp: c.expires ? new Date(c.expires + "T23:59:59") : null })));
+  return rows.sort((a, b) => (a.exp || 0) - (b.exp || 0));
+}
+function ipcState(r) {
+  if (!r.exp) return "ok";
+  const left = r.exp - Date.now();
+  return left < 0 ? "expired" : left <= 90 * DAY ? "soon" : "ok";
+}
+function renderIpc() {
+  const list = ipcRows().filter((r) => ipcFilter === "all" || ipcState(r) === ipcFilter);
+  $("ipc-all").checked = false;
+  $("ipc-list").innerHTML = list.length ? list.map((r) => `<tr>
+    <td><input type="checkbox" data-isel="${esc(r.key)}"></td>
+    <td>${esc(r.m.name)}<br><span style="color:var(--muted);font-size:13px">${esc(r.m.company)}</span></td>
+    <td>${esc(r.m.phone)}<br><span style="color:var(--muted);font-size:13px">${esc(r.m.email)}</span></td>
+    <td>${esc(r.c.type)}<br><span style="color:var(--muted);font-size:13px">${esc(r.c.level || "")}</span></td>
+    <td>${esc(r.c.certNo || "-")}</td>
+    <td>${esc(r.c.expires || "-")} ${ipcState(r) === "expired" ? '<span class="badge muted">만료</span>' : ipcState(r) === "soon" ? '<span class="badge">갱신 필요</span>' : ""}</td></tr>`).join("")
+    : `<tr><td colspan="6" class="empty">해당하는 자격이 없습니다.</td></tr>`;
+}
+$("ipc-filter").onclick = (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  document.querySelectorAll("#ipc-filter button").forEach((x) => x.classList.toggle("on", x === b));
+  ipcFilter = b.dataset.f; renderIpc();
+};
+$("ipc-all").onchange = (e) => document.querySelectorAll("#ipc-list [data-isel]").forEach((c) => (c.checked = e.target.checked));
+$("btn-ipc-notice").onclick = () => {
+  const keys = [...document.querySelectorAll("#ipc-list [data-isel]:checked")].map((c) => c.dataset.isel);
+  const rows = ipcRows().filter((r) => keys.includes(r.key));
+  if (!rows.length) { showMsg(msg, "안내 메일을 보낼 자격을 먼저 체크해 주세요.", "info"); return; }
+  const emails = [...new Set(rows.map((r) => r.m.email))];
+  const types = [...new Set(rows.map((r) => r.c.type))].join(", ");
+  const subject = "[스마트엣지] IPC 자격 갱신 안내";
+  const body = `안녕하세요, 주식회사 스마트엣지입니다.
+
+등록해 주신 IPC 자격(${types})의 유효기간(2년)이 곧 끝나거나 이미 끝났습니다.
+자격을 유지하시려면 만료 전에 갱신(재인증) 교육을 받으셔야 합니다.
+
+갱신 교육 일정과 출장 교육 상담은 이 메일에 회신하시거나 아래로 연락 주세요.
+전화 070-5015-0355 · 이메일 hsp@sm-edge.com
+
+이미 갱신하셨다면 홈페이지 "내 정보"에서 취득일을 새로 입력해 주세요.
+https://sm-edge.com/member.html#mypage
+
+※ 이 메일은 IPC 자격 갱신 안내 수신에 동의하신 분께 보내 드립니다. 더 받지 않으시려면 "내 정보"에서 동의를 해제하시거나 회신으로 알려 주세요.
+
+주식회사 스마트엣지`;
+  location.href = `mailto:hsp@sm-edge.com?bcc=${encodeURIComponent(emails.join(","))}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+};
+$("btn-ipc-csv").onclick = () => {
+  const head = ["이름", "회사명", "연락처", "이메일", "자격", "등급", "자격번호", "취득일", "만료일"];
+  const rows = ipcRows().map((r) => [r.m.name, r.m.company, r.m.phone, r.m.email, r.c.type, r.c.level, r.c.certNo, r.c.issued, r.c.expires]);
+  const csv = "\uFEFF" + [head, ...rows].map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = `스마트엣지_IPC자격_${fmtDate(new Date()).replace(/\./g, "")}.csv`; a.click();
+};
+
 $("mem-filter").onclick = (e) => {
   const b = e.target.closest("button"); if (!b) return;
   document.querySelectorAll("#mem-filter button").forEach((x) => x.classList.toggle("on", x === b));
