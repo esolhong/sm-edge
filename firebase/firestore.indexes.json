@@ -1,7 +1,0 @@
-{
-  "indexes": [],
-  "fieldOverrides": [
-    { "collectionGroup": "members",   "fieldPath": "expireAt", "ttl": true, "indexes": [] },
-    { "collectionGroup": "inquiries", "fieldPath": "expireAt", "ttl": true, "indexes": [] }
-  ]
-}

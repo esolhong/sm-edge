@@ -50,14 +50,17 @@
 
       <div data-pane="inq">
         <div class="tabs" id="inq-filter" style="margin-bottom:16px">
-          <button class="on" data-f="new">미답변</button><button data-f="answered">답변 완료</button><button data-f="all">전체</button>
+          <button class="on" data-f="new">미답변</button><button data-f="answered">답변 완료</button><button data-f="all">전체</button><button data-f="expired">보관기한 지남</button>
         </div>
         <div id="inq-list"></div>
       </div>
 
       <div data-pane="mem" hidden>
-        <div class="btns" style="margin:0 0 16px"><button class="btn ghost small" id="btn-csv">엑셀(CSV)로 내려받기</button></div>
-        <div class="table-wrap"><table class="list"><thead><tr><th>이름</th><th>회사</th><th>연락처</th><th>이메일</th><th>가입일</th><th>보유기간</th><th></th></tr></thead><tbody id="mem-list"></tbody></table></div>
+        <div class="tabs" id="mem-filter" style="margin-bottom:12px">
+          <button class="on" data-f="all">전체</button><button data-f="soon">만료 30일 이내</button><button data-f="expired">만료됨</button>
+        </div>
+        <div class="btns" style="margin:0 0 16px"><button class="btn primary small" id="btn-notice">선택한 회원에게 연장 안내 메일</button><button class="btn ghost small" id="btn-csv">엑셀(CSV)로 내려받기</button></div>
+        <div class="table-wrap"><table class="list"><thead><tr><th><input type="checkbox" id="mem-all" title="전체 선택"></th><th>이름</th><th>회사</th><th>연락처</th><th>이메일</th><th>가입일</th><th>보유기간</th><th></th></tr></thead><tbody id="mem-list"></tbody></table></div>
       </div>
 
       <div data-pane="files" hidden>
@@ -98,7 +101,7 @@
   © 2026 SMART EDGE. All rights reserved.
 </footer>
 <script type="module">
-import { ready, getFirebase, onUser, isAdmin, memberValid, fmtDate, esc, showMsg, hideMsg, koError, NOT_READY_TEXT } from "./assets/js/app.js";
+import { ready, getFirebase, onUser, isAdmin, toDate, fmtDate, esc, showMsg, hideMsg, koError, NOT_READY_TEXT } from "./assets/js/app.js";
 
 const msg = document.getElementById("msg");
 const $ = (id) => document.getElementById(id);
@@ -130,7 +133,8 @@ async function loadInq() {
   renderInq();
 }
 function renderInq() {
-  const list = inquiries.filter((x) => inqFilter === "all" || (inqFilter === "answered" ? x.status === "answered" : x.status !== "answered"));
+  const expired = (x) => { const d = toDate(x.expireAt); return d && d < new Date(); };
+  const list = inquiries.filter((x) => inqFilter === "all" || (inqFilter === "expired" ? expired(x) : inqFilter === "answered" ? x.status === "answered" : x.status !== "answered"));
   if (!list.length) { $("inq-list").innerHTML = `<p class="empty">해당하는 문의가 없습니다.</p>`; return; }
   $("inq-list").innerHTML = list.map((x) => {
     const mail = `mailto:${encodeURIComponent(x.email)}?subject=${encodeURIComponent("[스마트엣지] Re: " + x.subject)}`;
@@ -176,12 +180,50 @@ $("inq-list").onclick = async (e) => {
 async function loadMem() {
   const snap = await fb.F.getDocs(fb.F.query(fb.F.collection(fb.db, "members"), fb.F.orderBy("createdAt", "desc")));
   members = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  $("mem-list").innerHTML = members.length ? members.map((m) => `<tr>
+  renderMem();
+}
+let memFilter = "all";
+const DAY = 864e5;
+function memState(m) {
+  const exp = toDate(m.expireAt); if (!exp) return "expired";
+  const left = exp - Date.now();
+  return left <= 0 ? "expired" : left <= 30 * DAY ? "soon" : "ok";
+}
+function renderMem() {
+  const list = members.filter((m) => memFilter === "all" || memState(m) === memFilter);
+  $("mem-all").checked = false;
+  $("mem-list").innerHTML = list.length ? list.map((m) => `<tr>
+    <td><input type="checkbox" data-sel="${m.id}"></td>
     <td>${esc(m.name)}</td><td>${esc(m.company)}${m.title ? `<br><span style="color:var(--muted);font-size:13px">${esc(m.title)}</span>` : ""}</td>
     <td>${esc(m.phone)}</td><td>${esc(m.email)}</td><td>${fmtDate(m.createdAt)}</td>
-    <td>${memberValid(m) ? fmtDate(m.expireAt) : '<span class="badge muted">만료</span>'}</td>
-    <td class="act"><button class="btn ghost small" data-del="${m.id}">삭제</button></td></tr>`).join("") : `<tr><td colspan="7" class="empty">가입한 회원이 없습니다.</td></tr>`;
+    <td>${fmtDate(m.expireAt)} ${memState(m) === "expired" ? '<span class="badge muted">만료</span>' : memState(m) === "soon" ? '<span class="badge">만료 임박</span>' : ""}</td>
+    <td class="act"><button class="btn ghost small" data-del="${m.id}">삭제</button></td></tr>`).join("") : `<tr><td colspan="8" class="empty">해당하는 회원이 없습니다.</td></tr>`;
 }
+$("mem-filter").onclick = (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  document.querySelectorAll("#mem-filter button").forEach((x) => x.classList.toggle("on", x === b));
+  memFilter = b.dataset.f; renderMem();
+};
+$("mem-all").onchange = (e) => document.querySelectorAll("#mem-list [data-sel]").forEach((c) => (c.checked = e.target.checked));
+$("btn-notice").onclick = () => {
+  const ids = [...document.querySelectorAll("#mem-list [data-sel]:checked")].map((c) => c.dataset.sel);
+  const sel = members.filter((m) => ids.includes(m.id));
+  if (!sel.length) { showMsg(msg, "안내 메일을 보낼 회원을 먼저 체크해 주세요.", "info"); return; }
+  const subject = "[스마트엣지] 회원 정보 보유기간 만료 안내";
+  const body = `안녕하세요, 주식회사 스마트엣지입니다.
+
+스마트엣지 홈페이지 회원 정보의 보유기간(3년)이 곧 끝납니다.
+계속 이용하시려면 아래 주소에서 로그인한 뒤 "내 정보 → 3년 연장"을 눌러 주세요.
+https://sm-edge.com/member.html#mypage
+
+연장하지 않으시면 보유기간이 끝난 뒤 회원 정보(이름, 연락처, 이메일, 회사명)를 삭제합니다.
+삭제를 원하시면 이 메일에 회신하시거나 "내 정보 → 회원 탈퇴"를 누르셔도 됩니다.
+
+감사합니다.
+주식회사 스마트엣지 · 070-5015-0355 · hsp@sm-edge.com`;
+  // 받는 사람끼리 주소가 보이지 않도록 숨은참조(BCC)로 보냄
+  location.href = `mailto:hsp@sm-edge.com?bcc=${encodeURIComponent(sel.map((m) => m.email).join(","))}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+};
 $("mem-list").onclick = async (e) => {
   const b = e.target.closest("button[data-del]"); if (!b) return;
   if (!confirm("이 회원의 정보를 삭제할까요? (로그인 계정은 Firebase 콘솔 Authentication에서 따로 지울 수 있습니다)")) return;
