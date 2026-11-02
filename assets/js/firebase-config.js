@@ -5,12 +5,12 @@
 // apiKey 가 비어 있으면 회원가입·문의 기능은 "준비 중" 안내로 표시됩니다.
 // ─────────────────────────────────────────────────────────────
 export const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyCzXhsuAdBzPS7hT0tskye8jLV4_JKManA",
+  authDomain: "smartedge-web.firebaseapp.com",
+  projectId: "smartedge-web",
+  storageBucket: "smartedge-web.firebasestorage.app",
+  messagingSenderId: "363798016049",
+  appId: "1:363798016049:web:b601726ac4fe1caa136510"
 };
 
 // 관리자 계정 (문의 답변·회원 확인·자료 올리기). firebase/*.rules 의 주소와 같아야 합니다.
