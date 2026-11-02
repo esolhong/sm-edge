@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>관리자 | 스마트엣지</title>
+<meta name="description" content="스마트엣지 관리자 페이지">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="assets/smartedge_icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/smartedge_icon_512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<meta name="robots" content="noindex,nofollow">
+<link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="index.html" aria-label="스마트엣지 홈">
+      <img src="assets/smartedge_icon.svg" width="34" height="34" alt="">
+      <span class="logo-text">SMART <span>EDGE</span></span>
+    </a>
+    <nav>
+      <a href="about.html">회사소개</a>
+      <a href="index.html#products">제품</a>
+      <a href="support.html">고객지원</a>
+      <a href="inquiry.html">고객문의</a>
+      <a href="member.html" id="nav-user">로그인</a>
+    </nav>
+  </div>
+</header>
+
+<section class="page-head">
+  <div class="wrap">
+    <div class="eyebrow">ADMIN</div>
+    <h1>관리자 페이지</h1>
+    <div class="msg" id="msg"></div>
+    <div id="gate">
+      <p class="sub">관리자 계정(hsp@sm-edge.com)으로 로그인해 주세요.</p>
+      <button class="btn primary" id="btn-google">Google 계정으로 로그인</button>
+    </div>
+    <div id="panel" hidden>
+      <div class="userbar"><span id="who"></span><button class="btn ghost small" id="btn-out">로그아웃</button></div>
+      <div class="tabs" id="tabs">
+        <button data-t="inq" class="on">고객문의 <span id="new-count"></span></button>
+        <button data-t="mem">회원</button>
+        <button data-t="files">자료 관리</button>
+      </div>
+
+      <div data-pane="inq">
+        <div class="tabs" id="inq-filter" style="margin-bottom:16px">
+          <button class="on" data-f="new">미답변</button><button data-f="answered">답변 완료</button><button data-f="all">전체</button><button data-f="expired">보관기한 지남</button>
+        </div>
+        <div id="inq-list"></div>
+      </div>
+
+      <div data-pane="mem" hidden>
+        <div class="tabs" id="mem-filter" style="margin-bottom:12px">
+          <button class="on" data-f="all">전체</button><button data-f="soon">만료 30일 이내</button><button data-f="expired">만료됨</button>
+        </div>
+        <div class="btns" style="margin:0 0 16px"><button class="btn primary small" id="btn-notice">선택한 회원에게 연장 안내 메일</button><button class="btn ghost small" id="btn-csv">엑셀(CSV)로 내려받기</button></div>
+        <div class="table-wrap"><table class="list"><thead><tr><th><input type="checkbox" id="mem-all" title="전체 선택"></th><th>이름</th><th>회사</th><th>연락처</th><th>이메일</th><th>가입일</th><th>보유기간</th><th></th></tr></thead><tbody id="mem-list"></tbody></table></div>
+      </div>
+
+      <div data-pane="files" hidden>
+        <div class="card" style="margin-bottom:28px">
+          <h3>새 자료 올리기</h3>
+          <form id="f-file">
+            <div class="cols">
+              <div class="row"><label>자료실 <span class="req">*</span></label>
+                <select name="category" required>
+                  <option value="software">소프트웨어 자료실 (공개)</option>
+                  <option value="drawing">도면 자료실 (회원 전용)</option>
+                  <option value="general">일반 자료실 (공개)</option>
+                </select></div>
+              <div class="row"><label>자료명 <span class="req">*</span></label><input type="text" name="title" required maxlength="120" placeholder="예: 링 조명 RL-70 취부도면"></div>
+            </div>
+            <div class="row"><label>설명</label><input type="text" name="desc" maxlength="200"></div>
+            <div class="cols">
+              <div class="row drawing-only"><label>구분 (도면)</label><select name="productType"><option>LED조명</option><option>제어장치</option></select></div>
+              <div class="row"><label>형식</label><input type="text" name="format" maxlength="20" placeholder="PDF, DXF, STEP, ZIP, EXE …"></div>
+            </div>
+            <div class="cols">
+              <div class="row"><label>버전 (소프트웨어)</label><input type="text" name="version" maxlength="30" placeholder="예: v1.2.0"></div>
+              <div class="row"><label>파일 선택</label><input type="file" name="file" style="color:var(--muted)"></div>
+            </div>
+            <div class="row"><label>또는 외부 링크 (구글 드라이브 등, 공개 자료만)</label><input type="text" name="url" maxlength="500" placeholder="https://"></div>
+            <div class="btns"><button class="btn primary" type="submit">올리기</button><span id="upload-progress" style="color:var(--muted);align-self:center"></span></div>
+          </form>
+        </div>
+        <div class="table-wrap"><table class="list"><thead><tr><th>자료명</th><th>자료실</th><th>형식</th><th>등록일</th><th></th></tr></thead><tbody id="file-list"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  주식회사 스마트엣지 · 대표이사 홍승표 · 인천광역시 남동구 구월로 336번길 9, 서광빌딩 4층 402호<br>
+  TEL 070-5015-0355 · hsp@sm-edge.com · <a href="privacy.html"><strong>개인정보처리방침</strong></a><br>
+  © 2026 SMART EDGE. All rights reserved.
+</footer>
+<script type="module">
+import { ready, getFirebase, onUser, isAdmin, toDate, fmtDate, esc, showMsg, hideMsg, koError, NOT_READY_TEXT } from "./assets/js/app.js";
+
+const msg = document.getElementById("msg");
+const $ = (id) => document.getElementById(id);
+let fb = null, inquiries = [], members = [], files = [], inqFilter = "new";
+const CAT = { software: "소프트웨어", drawing: "도면 (회원 전용)", general: "일반" };
+
+if (!ready) { showMsg(msg, NOT_READY_TEXT + " (Firebase 설정 후 사용할 수 있습니다)", "info"); $("btn-google").disabled = true; }
+
+$("btn-google").onclick = async () => {
+  fb = await getFirebase(); if (!fb) return;
+  try { await fb.A.signInWithPopup(fb.auth, new fb.A.GoogleAuthProvider()); }
+  catch (e) { showMsg(msg, koError(e), "err"); }
+};
+$("btn-out").onclick = async () => { await fb.A.signOut(fb.auth); location.reload(); };
+
+$("tabs").onclick = (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  document.querySelectorAll("#tabs button").forEach((x) => x.classList.toggle("on", x === b));
+  document.querySelectorAll("[data-pane]").forEach((p) => (p.hidden = p.dataset.pane !== b.dataset.t));
+  hideMsg(msg);
+};
+
+// ── 고객문의 ──
+async function loadInq() {
+  const snap = await fb.F.getDocs(fb.F.query(fb.F.collection(fb.db, "inquiries"), fb.F.orderBy("createdAt", "desc")));
+  inquiries = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const n = inquiries.filter((x) => x.status !== "answered").length;
+  $("new-count").textContent = n ? `(${n})` : "";
+  renderInq();
+}
+function renderInq() {
+  const expired = (x) => { const d = toDate(x.expireAt); return d && d < new Date(); };
+  const list = inquiries.filter((x) => inqFilter === "all" || (inqFilter === "expired" ? expired(x) : inqFilter === "answered" ? x.status === "answered" : x.status !== "answered"));
+  if (!list.length) { $("inq-list").innerHTML = `<p class="empty">해당하는 문의가 없습니다.</p>`; return; }
+  $("inq-list").innerHTML = list.map((x) => {
+    const mail = `mailto:${encodeURIComponent(x.email)}?subject=${encodeURIComponent("[스마트엣지] Re: " + x.subject)}`;
+    return `<details class="card" style="margin-bottom:12px" data-id="${x.id}">
+      <summary style="cursor:pointer"><strong>${esc(x.subject)}</strong> ${x.status === "answered" ? '<span class="badge ok">답변 완료</span>' : '<span class="badge">미답변</span>'}
+        <br><span style="color:var(--muted);font-size:13px">${esc(x.category)} · ${esc(x.company)} ${esc(x.name)} · ${fmtDate(x.createdAt, true)}${x.uid ? " · 회원" : ""}</span></summary>
+      <table style="margin:12px 0;font-size:14px">
+        <tr><th style="width:90px">연락처</th><td><a href="tel:${esc(x.phone)}">${esc(x.phone)}</a></td></tr>
+        <tr><th>이메일</th><td><a href="${mail}">${esc(x.email)}</a></td></tr>
+        <tr><th>보관 기한</th><td>${fmtDate(x.expireAt)}</td></tr>
+      </table>
+      <p class="pre">${esc(x.body)}</p>
+      <div class="row" style="margin-top:14px"><label>답변 (회원으로 작성한 문의는 고객의 "내 문의 내역"에 표시됩니다)</label><textarea data-answer>${esc(x.answer || "")}</textarea></div>
+      <div class="btns" style="margin-top:8px">
+        <button class="btn primary small" data-act="answer">답변 저장</button>
+        <a class="btn ghost small" href="${mail}&body=${encodeURIComponent((x.answer || "") + "\n\n---- 문의 내용 ----\n" + x.body)}">이메일로 답장</a>
+        <button class="btn ghost small" data-act="del" style="margin-left:auto">삭제</button>
+      </div>
+    </details>`;
+  }).join("");
+}
+$("inq-filter").onclick = (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  document.querySelectorAll("#inq-filter button").forEach((x) => x.classList.toggle("on", x === b));
+  inqFilter = b.dataset.f; renderInq();
+};
+$("inq-list").onclick = async (e) => {
+  const b = e.target.closest("button[data-act]"); if (!b) return;
+  const card = b.closest("[data-id]"); const ref = fb.F.doc(fb.db, "inquiries", card.dataset.id);
+  try {
+    if (b.dataset.act === "answer") {
+      const answer = card.querySelector("[data-answer]").value.trim();
+      await fb.F.updateDoc(ref, { answer, status: answer ? "answered" : "new", answeredAt: answer ? fb.F.serverTimestamp() : null });
+      showMsg(msg, "답변을 저장했습니다. 비회원 문의는 '이메일로 답장'으로 보내 주세요.", "ok");
+    } else if (confirm("이 문의를 삭제할까요? 되돌릴 수 없습니다.")) {
+      await fb.F.deleteDoc(ref);
+    } else return;
+    await loadInq();
+  } catch (err) { showMsg(msg, koError(err), "err"); }
+};
+
+// ── 회원 ──
+async function loadMem() {
+  const snap = await fb.F.getDocs(fb.F.query(fb.F.collection(fb.db, "members"), fb.F.orderBy("createdAt", "desc")));
+  members = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  renderMem();
+}
+let memFilter = "all";
+const DAY = 864e5;
+function memState(m) {
+  const exp = toDate(m.expireAt); if (!exp) return "expired";
+  const left = exp - Date.now();
+  return left <= 0 ? "expired" : left <= 30 * DAY ? "soon" : "ok";
+}
+function renderMem() {
+  const list = members.filter((m) => memFilter === "all" || memState(m) === memFilter);
+  $("mem-all").checked = false;
+  $("mem-list").innerHTML = list.length ? list.map((m) => `<tr>
+    <td><input type="checkbox" data-sel="${m.id}"></td>
+    <td>${esc(m.name)}</td><td>${esc(m.company)}${m.title ? `<br><span style="color:var(--muted);font-size:13px">${esc(m.title)}</span>` : ""}</td>
+    <td>${esc(m.phone)}</td><td>${esc(m.email)}</td><td>${fmtDate(m.createdAt)}</td>
+    <td>${fmtDate(m.expireAt)} ${memState(m) === "expired" ? '<span class="badge muted">만료</span>' : memState(m) === "soon" ? '<span class="badge">만료 임박</span>' : ""}</td>
+    <td class="act"><button class="btn ghost small" data-del="${m.id}">삭제</button></td></tr>`).join("") : `<tr><td colspan="8" class="empty">해당하는 회원이 없습니다.</td></tr>`;
+}
+$("mem-filter").onclick = (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  document.querySelectorAll("#mem-filter button").forEach((x) => x.classList.toggle("on", x === b));
+  memFilter = b.dataset.f; renderMem();
+};
+$("mem-all").onchange = (e) => document.querySelectorAll("#mem-list [data-sel]").forEach((c) => (c.checked = e.target.checked));
+$("btn-notice").onclick = () => {
+  const ids = [...document.querySelectorAll("#mem-list [data-sel]:checked")].map((c) => c.dataset.sel);
+  const sel = members.filter((m) => ids.includes(m.id));
+  if (!sel.length) { showMsg(msg, "안내 메일을 보낼 회원을 먼저 체크해 주세요.", "info"); return; }
+  const subject = "[스마트엣지] 회원 정보 보유기간 만료 안내";
+  const body = `안녕하세요, 주식회사 스마트엣지입니다.
+
+스마트엣지 홈페이지 회원 정보의 보유기간(3년)이 곧 끝납니다.
+계속 이용하시려면 아래 주소에서 로그인한 뒤 "내 정보 → 3년 연장"을 눌러 주세요.
+https://sm-edge.com/member.html#mypage
+
+연장하지 않으시면 보유기간이 끝난 뒤 회원 정보(이름, 연락처, 이메일, 회사명)를 삭제합니다.
+삭제를 원하시면 이 메일에 회신하시거나 "내 정보 → 회원 탈퇴"를 누르셔도 됩니다.
+
+감사합니다.
+주식회사 스마트엣지 · 070-5015-0355 · hsp@sm-edge.com`;
+  // 받는 사람끼리 주소가 보이지 않도록 숨은참조(BCC)로 보냄
+  location.href = `mailto:hsp@sm-edge.com?bcc=${encodeURIComponent(sel.map((m) => m.email).join(","))}&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+};
+$("mem-list").onclick = async (e) => {
+  const b = e.target.closest("button[data-del]"); if (!b) return;
+  if (!confirm("이 회원의 정보를 삭제할까요? (로그인 계정은 Firebase 콘솔 Authentication에서 따로 지울 수 있습니다)")) return;
+  try { await fb.F.deleteDoc(fb.F.doc(fb.db, "members", b.dataset.del)); await loadMem(); }
+  catch (err) { showMsg(msg, koError(err), "err"); }
+};
+$("btn-csv").onclick = () => {
+  const head = ["이름", "회사명", "부서·직함", "연락처", "이메일", "가입일", "보유기간"];
+  const rows = members.map((m) => [m.name, m.company, m.title, m.phone, m.email, fmtDate(m.createdAt), fmtDate(m.expireAt)]);
+  const csv = "﻿" + [head, ...rows].map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = `스마트엣지_회원_${fmtDate(new Date()).replace(/\./g, "")}.csv`; a.click();
+};
+
+// ── 자료 관리 ──
+const ff = $("f-file");
+const syncCat = () => document.querySelectorAll(".drawing-only").forEach((el) => (el.style.visibility = ff.elements.category.value === "drawing" ? "visible" : "hidden"));
+ff.elements.category.onchange = syncCat; syncCat();
+
+async function loadFiles() {
+  const snap = await fb.F.getDocs(fb.F.query(fb.F.collection(fb.db, "files"), fb.F.orderBy("createdAt", "desc")));
+  files = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  $("file-list").innerHTML = files.length ? files.map((f) => `<tr><td><strong>${esc(f.title)}</strong>${f.desc ? `<br><span style="color:var(--muted);font-size:13px">${esc(f.desc)}</span>` : ""}</td>
+    <td>${CAT[f.category] || f.category}${f.category === "drawing" ? ` · ${esc(f.productType || "")}` : ""}</td><td>${esc(f.format || "-")}</td><td>${fmtDate(f.createdAt)}</td>
+    <td class="act"><button class="btn ghost small" data-del="${f.id}">삭제</button></td></tr>`).join("") : `<tr><td colspan="5" class="empty">등록된 자료가 없습니다.</td></tr>`;
+}
+
+ff.onsubmit = async (e) => {
+  e.preventDefault();
+  const v = (n) => ff.elements[n].value.trim();
+  const file = ff.elements.file.files[0];
+  const category = v("category"), memberOnly = category === "drawing";
+  if (!file && !v("url")) { showMsg(msg, "파일을 선택하거나 외부 링크를 입력해 주세요.", "err"); return; }
+  if (memberOnly && !file) { showMsg(msg, "회원 전용 도면은 외부 링크가 아니라 파일로 올려 주세요. (링크는 누구나 열 수 있습니다)", "err"); return; }
+  const btn = ff.querySelector("button[type=submit]"); btn.disabled = true;
+  try {
+    let path = null, size = null, format = v("format");
+    if (file) {
+      const safe = file.name.replace(/[^\w.\-가-힣]/g, "_");
+      path = `${memberOnly ? "members" : "public"}/${category}/${Date.now()}_${safe}`;
+      const task = fb.S.uploadBytesResumable(fb.S.ref(fb.storage, path), file);
+      await new Promise((res, rej) => task.on("state_changed",
+        (s) => ($("upload-progress").textContent = `올리는 중… ${Math.round((s.bytesTransferred / s.totalBytes) * 100)}%`), rej, res));
+      size = file.size;
+      if (!format) format = (file.name.split(".").pop() || "").toUpperCase();
+    }
+    await fb.F.addDoc(fb.F.collection(fb.db, "files"), {
+      category, memberOnly, title: v("title"), desc: v("desc"),
+      productType: memberOnly ? v("productType") : "", format: format.toUpperCase(), version: v("version"),
+      path, url: file ? "" : v("url"), size, createdAt: fb.F.serverTimestamp()
+    });
+    ff.reset(); syncCat(); $("upload-progress").textContent = "";
+    showMsg(msg, "자료를 올렸습니다.", "ok"); await loadFiles();
+  } catch (err) { showMsg(msg, koError(err), "err"); $("upload-progress").textContent = ""; }
+  btn.disabled = false;
+};
+
+$("file-list").onclick = async (e) => {
+  const b = e.target.closest("button[data-del]"); if (!b) return;
+  const f = files.find((x) => x.id === b.dataset.del);
+  if (!confirm(`"${f.title}" 자료를 삭제할까요?`)) return;
+  try {
+    if (f.path) { try { await fb.S.deleteObject(fb.S.ref(fb.storage, f.path)); } catch (_) {} }
+    await fb.F.deleteDoc(fb.F.doc(fb.db, "files", f.id)); await loadFiles();
+  } catch (err) { showMsg(msg, koError(err), "err"); }
+};
+
+onUser(async (user) => {
+  fb = await getFirebase();
+  if (!user) return;
+  if (!isAdmin(user)) {
+    showMsg(msg, `${user.email} 계정은 관리자 권한이 없습니다.`, "err");
+    $("gate").hidden = false; $("panel").hidden = true; return;
+  }
+  $("gate").hidden = true; $("panel").hidden = false;
+  $("who").innerHTML = `<strong>${esc(user.email)}</strong> 관리자`;
+  try { await Promise.all([loadInq(), loadMem(), loadFiles()]); }
+  catch (err) { showMsg(msg, koError(err), "err"); }
+});
+</script>
+
+</body>
+</html>

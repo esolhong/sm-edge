@@ -1,0 +1,30 @@
+rules_version = '2';
+// 스마트엣지 홈페이지 Storage 보안 규칙
+// Firebase 콘솔 → Storage → 규칙 탭에 그대로 붙여 넣고 "게시"를 누르세요.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email in ['hsp@sm-edge.com']
+        && request.auth.token.email_verified == true;
+    }
+    // 회원 정보가 있고 보유기간(3년)이 남아 있는 회원
+    function isMember() {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/members/$(request.auth.uid))
+        && firestore.get(/databases/(default)/documents/members/$(request.auth.uid)).data.expireAt > request.time;
+    }
+
+    // 공개 자료 (소프트웨어, 일반 자료실)
+    match /public/{all=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    // 회원 전용 자료 (도면 PDF·DXF·STEP)
+    match /members/{all=**} {
+      allow read: if isAdmin() || isMember();
+      allow write: if isAdmin();
+    }
+  }
+}
