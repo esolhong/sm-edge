@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>일렉트레이너 | 스마트엣지</title>
+<meta name="description" content="스마트엣지 일렉트레이너: 전기·전자·기계 실무 교육용 소프트웨어. PCB 거버뷰어를 브라우저에서 바로 실행해 거버를 보고 부품 좌표와 파트리스트를 추출할 수 있습니다.">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" href="assets/smartedge_icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/smartedge_icon_512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/site.css">
+<style>
+  .card.soon{opacity:.7}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+  ul.feat{list-style:none}
+  ul.feat li{padding:9px 0;border-bottom:1px solid var(--line);font-size:15px;color:var(--muted)}
+  ul.feat li::before{content:"";display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-right:12px;vertical-align:middle}
+  ol.steps{list-style:none;counter-reset:s}
+  ol.steps li{counter-increment:s;position:relative;padding:0 0 16px 44px;color:var(--muted);font-size:15px}
+  ol.steps li b{color:var(--fg);font-weight:500}
+  ol.steps li::before{content:counter(s);position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#1a1405;font-weight:700;font-size:14px;display:grid;place-items:center}
+  .fmt{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 28px}
+  .fmt span{padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:var(--card);font-size:14px}
+  .note{margin-top:28px;font-size:14px;color:var(--muted);background:var(--card);border-left:3px solid var(--accent);padding:14px 16px;border-radius:0 10px 10px 0}
+  .runbox{margin-top:28px;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:#fff;display:none}
+  .runbox.on{display:block}
+  .runbox iframe{width:100%;height:85vh;min-height:560px;border:0;display:block}
+  @media (max-width:760px){ .two{grid-template-columns:1fr;gap:24px} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a class="logo" href="index.html" aria-label="스마트엣지 홈">
+      <img src="assets/smartedge_icon.svg" width="34" height="34" alt="">
+      <span class="logo-text">SMART <span>EDGE</span></span>
+    </a>
+    <nav>
+      <a href="about.html">회사소개</a>
+      <a href="index.html#products">제품</a>
+      <a href="eltrainer.html" aria-current="page">일렉트레이너</a>
+      <a href="support.html">고객지원</a>
+      <a href="inquiry.html">고객문의</a>
+    </nav>
+  </div>
+</header>
+
+<section class="page-head">
+  <div class="wrap">
+    <div class="eyebrow">ELECTRAINER</div>
+    <h1>일렉트레이너</h1>
+    <p class="sub">전기·전자·기계 실무를 위한 스마트엣지의 소프트웨어 모음입니다. 설치 없이 브라우저에서 바로 실행할 수 있는 프로그램부터 차례로 공개하며, 기능을 계속 더해 갑니다.</p>
+    <div class="grid">
+      <a class="card" href="#pcb-gerber-viewer"><div class="num">ELECTRAINER</div><h3>PCB 거버뷰어 <span class="badge ok">바로 실행</span></h3><p>거버·ODB++ 파일을 열어 보고, 부품 좌표와 파트리스트를 CSV로 추출합니다.</p></a>
+      <div class="card"><div class="num">ELECTRAINER</div><h3>배선검사 시뮬레이터</h3><p>전기기능장·전기기능사 실기 배선을 화면에서 연습하고 검사합니다.</p></div>
+      <div class="card"><div class="num">ELECTRAINER</div><h3>PLC 에디터</h3><p>PLC 프로그램을 작성하고 익히는 교육용 편집기입니다.</p></div>
+      <div class="card soon"><div class="num">ELECTRAINER</div><h3>추가 프로그램 <span class="badge muted">준비 중</span></h3><p>다른 기능의 프로그램을 순차적으로 공개할 예정입니다.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="pcb-gerber-viewer" class="alt">
+  <div class="wrap">
+    <div class="eyebrow">PCB GERBER VIEWER</div>
+    <h2>PCB 거버뷰어</h2>
+    <p class="sub">PCB 업체에 보내는 거버 파일을 그대로 열어 레이어별로 확인하고, SMT 실장에 필요한 부품 좌표와 파트리스트를 바로 뽑아 주는 도구입니다. 올린 파일은 서버로 전송되지 않고 내 PC의 브라우저 안에서만 처리됩니다.</p>
+
+    <div class="two">
+      <div>
+        <h3>주요 기능</h3>
+        <ul class="feat">
+          <li>거버 ZIP 통째로 열기: 동박, 마스크, 실크, 드릴, 외곽 레이어를 켜고 끄며 확인</li>
+          <li>어레이(연배열) 보드를 자동으로 나눠 보드별로 표시</li>
+          <li>부품 중심 좌표 추출, 원점(ORG) 직접 지정, TOP/BOTTOM 구분</li>
+          <li>레퍼런스·값·마킹을 표에서 편집하고 파트리스트 CSV로 저장</li>
+          <li>회로도·실장 사진·PDF를 옆에 띄워 놓고 대조하며 입력</li>
+        </ul>
+        <h3 style="margin-top:28px">지원 파일</h3>
+        <div class="fmt"><span>거버 RS-274X / RS-274D</span><span>ZIP 묶음</span><span>Excellon 드릴</span><span>ODB++</span><span>IPC-356 넷리스트</span><span>PDF·사진 (참조용)</span></div>
+      </div>
+      <div>
+        <h3>사용 방법</h3>
+        <ol class="steps">
+          <li><b>실행하기</b>를 눌러 뷰어를 엽니다.</li>
+          <li><b>불러오기</b>에서 거버 ZIP이나 ODB++ 파일을 고르거나 화면에 끌어다 놓습니다.</li>
+          <li>레이어와 보드를 확인하고, 필요하면 <b>ORG 원점 지정</b>으로 좌표 기준을 잡습니다.</li>
+          <li><b>부품 좌표 · 파트리스트</b> 표에서 레퍼런스와 값을 확인·수정합니다.</li>
+          <li><b>저장</b>에서 SMT 좌표와 파트리스트 CSV를 내려받습니다.</li>
+        </ol>
+        <div class="btns" style="margin-top:12px">
+          <a class="btn primary" href="#run" id="runBtn">실행하기</a>
+          <a class="btn ghost" href="tools/pcb-gerber-viewer.html" target="_blank" rel="noopener">새 창에서 열기</a>
+        </div>
+      </div>
+    </div>
+
+    <p class="note">거버에는 레퍼런스 번호(R1, C3 등)가 없는 경우가 많습니다. 이때는 회로도를 보며 레퍼런스를 채워 주세요. 사진·PDF에서 부품을 자동으로 읽어 내는 기능은 홈페이지판에는 포함되어 있지 않습니다. 넓은 화면의 PC에서 쓰기를 권장합니다.</p>
+
+    <div class="runbox" id="run"></div>
+  </div>
+</section>
+
+<footer>
+  주식회사 스마트엣지 · 대표이사 홍승표 · 인천광역시 남동구 구월로 336번길 9, 서광빌딩 4층 402호<br>
+  TEL 070-5015-0355 · hsp@sm-edge.com · <a href="privacy.html"><strong>개인정보처리방침</strong></a><br>
+  © 2026 SMART EDGE. All rights reserved.
+</footer>
+
+<script>
+document.getElementById('runBtn').addEventListener('click', function (e) {
+  e.preventDefault();
+  var box = document.getElementById('run');
+  if (!box.firstChild) {
+    var f = document.createElement('iframe');
+    f.src = 'tools/pcb-gerber-viewer.html';
+    f.title = 'PCB 거버뷰어';
+    box.appendChild(f);
+  }
+  box.classList.add('on');
+  box.scrollIntoView({ behavior: 'smooth' });
+});
+</script>
+</body>
+</html>
