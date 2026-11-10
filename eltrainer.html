@@ -53,6 +53,7 @@
     <div class="grid">
       <a class="card" href="#pcb-gerber-viewer"><div class="num">ELECTRAINER</div><h3>PCB 거버뷰어</h3><p>거버·ODB++ 파일을 열어 보고, 부품 좌표와 파트리스트를 CSV로 추출합니다.</p></a>
       <a class="card" href="#gerber-cnc"><div class="num">ELECTRAINER</div><h3>CNC/G-CODE</h3><p>거버 데이터와 DXF 파일을 이용한 지그 제작과 판재 가공을 위한 CNC 조각기용 G-code 생성기입니다.</p></a>
+      <a class="card" href="#step-viewer"><div class="num">ELECTRAINER</div><h3>STEP뷰어</h3><p>STEP·IGES·STL·3MF 3D 모델과 DXF·DWG 도면, PDF를 열어 외형 치수를 확인하고, CAD PDF는 DXF로 바꿔 저장합니다.</p></a>
       <a class="card" href="#wiring-simulator"><div class="num">ELECTRAINER</div><h3>배선검사 시뮬레이터</h3><p>전기기능장·전기기능사 실기 배선을 화면에서 연습하고 검사합니다.</p></a>
       <div class="card"><div class="num">ELECTRAINER</div><h3>PLC 에디터</h3><p>PLC 프로그램을 작성하고 익히는 교육용 편집기입니다.</p></div>
       <div class="card soon"><div class="num">ELECTRAINER</div><h3>추가 프로그램 <span class="badge muted">준비 중</span></h3><p>다른 기능의 프로그램을 순차적으로 공개할 예정입니다.</p></div>
@@ -137,7 +138,44 @@
   </div>
 </section>
 
-<section id="wiring-simulator" class="alt">
+<section id="step-viewer" class="alt">
+  <div class="wrap">
+    <div class="eyebrow">STEP VIEWER</div>
+    <h2>STEP뷰어</h2>
+    <p class="sub">3D 모델(STEP·IGES·STL·3MF)과 2D 도면(DXF·DWG), PDF를 한 화면에서 열어 외형 치수와 홀 지름을 확인하는 도구입니다. CAD에서 내보낸 PDF는 선과 글자를 뽑아 축척을 맞춘 뒤 DXF로 저장할 수 있습니다. 파일은 서버로 전송되지 않고 브라우저 안에서만 처리됩니다.</p>
+
+    <div class="two">
+      <div>
+        <h3>주요 기능</h3>
+        <ul class="feat">
+          <li>3D: 회전·확대, 정면·윗면·측면 보기, 외형 가로·세로·높이, 부품(어셈블리) 목록과 부품별 치수</li>
+          <li>3D: 두 점 거리 재기, X·Y·Z 단면 보기, 와이어 보기</li>
+          <li>도면: 레이어 켜고 끄기, 외형 치수, 홀 지름별 개수, 원에 마우스를 올리면 지름·중심 표시</li>
+          <li>도면: 끝점·원 중심에 붙는 거리 재기, DXF로 다시 저장</li>
+          <li>PDF: 보기, CAD PDF를 도면으로 바꾸고 치수선으로 축척 맞춰 DXF 저장</li>
+        </ul>
+        <h3 style="margin-top:28px">지원 파일</h3>
+        <div class="fmt"><span>STEP (.step .stp)</span><span>IGES</span><span>STL</span><span>3MF</span><span>DXF</span><span>DWG</span><span>PDF</span></div>
+      </div>
+      <div>
+        <h3>사용 방법</h3>
+        <ol class="steps">
+          <li><b>새 창에서 열기</b>를 눌러 STEP뷰어를 엽니다.</li>
+          <li><b>불러오기</b>를 누르거나 파일을 화면에 끌어다 놓습니다. 여러 파일을 탭으로 열 수 있습니다.</li>
+          <li>왼쪽에서 외형 치수와 부품·레이어 목록을 확인하고, <b>거리 재기</b>로 원하는 곳을 잽니다.</li>
+          <li>PDF는 <b>도면으로 바꾸기</b> 후 <b>축척 맞추기</b>로 치수선 하나의 실제 길이를 넣고 <b>DXF 저장</b>을 누릅니다.</li>
+        </ol>
+        <div class="btns" style="margin-top:12px">
+          <a class="btn primary" href="tools/step-viewer.html" target="_blank" rel="noopener">새 창에서 열기</a>
+        </div>
+      </div>
+    </div>
+
+    <p class="note">솔리드웍스 파트·어셈블리(.SLDPRT, .SLDASM)는 직접 열 수 없습니다. 솔리드웍스에서 "다른 이름으로 저장 → STEP"으로 내보낸 뒤 여세요. 스캔한 그림 PDF는 선 정보가 없어 도면으로 바꿀 수 없습니다. 넓은 화면의 PC에서 쓰기를 권장합니다.</p>
+  </div>
+</section>
+
+<section id="wiring-simulator">
   <div class="wrap">
     <div class="eyebrow">WIRING SIMULATOR</div>
     <h2>배선검사 시뮬레이터 (전기기능장)</h2>
