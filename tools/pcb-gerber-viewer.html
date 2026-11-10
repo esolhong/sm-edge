@@ -49,6 +49,9 @@ button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid 
 input[type=text],input[type=number],select{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:5px 8px;border-radius:6px;min-width:0}
 .tabs{display:flex;flex-wrap:wrap;gap:6px}
 .tabs small{font-family:var(--f-mono);opacity:.75;margin-left:6px;font-size:11px}
+.tabs .x{margin-left:8px;padding:0 5px;border-radius:4px;opacity:.55;font-size:12px}
+.tabs .x:hover{opacity:1;background:var(--line)}
+.tabs .x[data-arm]{opacity:1;background:#c0392b;color:#fff}
 main{flex:1;min-height:0;display:grid;grid-template-columns:230px minmax(0,1fr) 330px;gap:10px}
 aside,.parts{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;display:flex;flex-direction:column;gap:12px;min-width:0}
 h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 6px;font-weight:600}
@@ -966,7 +969,15 @@ function toast(t){const el=$('toast'); el.textContent=t; el.hidden=false; clearT
 function buildTabs(){const t=$('tabs'); t.innerHTML='';
   for(const n in boards){const b=boards[n],[x0,y0,x1,y1]=b.ext, btn=document.createElement('button');
     btn.innerHTML=`${n}<small>${((x1-x0)*MM).toFixed(1)}×${((y1-y0)*MM).toFixed(1)}</small>`; btn.setAttribute('aria-pressed',n===cur);
-    btn.onclick=()=>select(n); t.appendChild(btn);}}
+    btn.onclick=()=>select(n);
+    const x=document.createElement('span'); x.className='x'; x.textContent='×'; x.title='목록에서 닫기';
+    x.onclick=e=>{ e.stopPropagation(); if(x.dataset.arm){ closeBoard(n); return; } x.dataset.arm='1'; x.textContent='닫기?'; setTimeout(()=>{ if(x.isConnected){ delete x.dataset.arm; x.textContent='×'; } },3000); };
+    btn.appendChild(x); t.appendChild(btn);}}
+function closeBoard(n){ if(!boards[n]) return; delete boards[n]; toast(`${n} 을(를) 목록에서 닫았습니다 (파일은 지워지지 않음)`);
+  const rest=Object.keys(boards); if(n!==cur){ buildTabs(); return; }
+  if(rest.length){ select(rest[0]); return; }
+  cur=null; sel.clear(); rfAlign=null; buildTabs(); $('layers').innerHTML=''; $('info').innerHTML=''; $('drill').innerHTML=''; $('ptable').innerHTML='';
+  $('editor').hidden=true; $('partsNote').textContent='불러오기로 거버를 여세요'; try{ $('rfCtl').hidden=true; }catch(e){} draw(); }
 function buildLayers(){const b=B(), el=$('layers'); el.innerHTML='';
   const rows=ORDER.filter(r=>b&&b.layers[r]).map(r=>[r,(b.srcNames[r]||[]).join(', '),ROLES[r][0],ROLES[r][1]]);
   rows.push(['parts','부품 중심','추출된 부품 좌표','#00e5ff']);
