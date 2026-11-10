@@ -7690,6 +7690,7 @@ h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute
 .item .sub{grid-column:2/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-1px 0 3px}
 .item .sub[hidden]{display:none}
 .item .sub select{font-size:12px;padding:2px 4px}
+.item .chk[hidden]{display:none}
 .item .chk{display:flex;gap:4px;align-items:center;font-size:12px;color:var(--muted)}
 .item:hover{background:var(--sel)}
 .item .m{font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
@@ -7807,7 +7808,7 @@ pre.gc .cur .n{color:inherit}
         <label for="dir">기본 절삭 방향</label><select id="dir"><option value="conv">안쪽 시계 · 바깥 반시계 (상향)</option><option value="climb">안쪽 반시계 · 바깥 시계 (하향)</option></select>
         <label for="drillN" title="엔드밀 지름과 같은 홀을 제자리에서 찍을 때 나눠 내려가는 횟수">홀 드릴 횟수</label><span><input type="number" id="drillN" value="2" step="1" min="1"><span class="u">회</span></span>
         <label for="drillUp" title="드릴 한 번 찍고 칩을 빼려고 올라가는 높이 (재료 윗면 기준)">드릴 후진 높이</label><span><input type="number" id="drillUp" value="2" step="0.5" min="0"><span class="u">mm</span></span>
-        <label for="finAllow" title="황삭+정삭으로 설정한 윤곽에서 황삭이 남겨 두는 측면 두께">정삭 여유 (측면)</label><span><input type="number" id="finAllow" value="0.2" step="0.05" min="0"><span class="u">mm</span></span>
+        <label for="finAllow" title="황삭+정삭 윤곽의 기본 정삭 두께 (황삭이 측면에 남겨 두는 두께). 윤곽마다 왼쪽 목록에서 따로 정할 수 있습니다">기본 정삭 두께</label><span><input type="number" id="finAllow" value="0.2" step="0.05" min="0"><span class="u">mm</span></span>
         <label for="finStep" title="정삭 한 번에 내려가는 깊이. 0이면 전체 깊이를 한 번에">정삭 1회 깊이</label><span><input type="number" id="finStep" value="0" step="0.5" min="0"><span class="u">mm · 0=한 번에</span></span>
         <label for="nTabs">고정 브리지 개수</label><span><input type="number" id="nTabs" value="4" step="1" min="0"><span class="u">개/외곽</span></span>
         <label for="tabW">브리지 폭</label><span><input type="number" id="tabW" value="3" step="0.5"><span class="u">mm</span></span>
@@ -8627,7 +8628,7 @@ function makeJob(b){ const p=P(), o=origin(b), toMM=(x,y)=>[(x-o[0])*MM,(y-o[1])
   const cuts=[];
   const finPasses=[]; if(p.finStep>0&&p.finStep<depth-1e-6){ for(let z=p.finStep;;z+=p.finStep){ if(z>=depth-1e-6){finPasses.push(depth);break;} finPasses.push(z); } } else finPasses.push(depth);
   for(const L of b.loops.filter(l=>l.on).sort((a,c)=>c.depth-a.depth)){ // inner first, outermost last
-    const r=p.tool/2/MM, sg=L.side==='out'?1:L.side==='in'?-1:0, rough=roughOf(L)&&p.finAllow>0;
+    const r=p.tool/2/MM, sg=L.side==='out'?1:L.side==='in'?-1:0, fin=L.fin!=null&&L.fin>0?L.fin:p.finAllow, rough=roughOf(L)&&fin>0;
     const mk=(extra)=>{ const off=offsetLoop(L.pts,sg*(r+extra)); return (off&&off.length?off:[L.pts]).map(path=>{ let q=simplify(path,3); const ccw=signedArea(q)>0;
       // climb on a CW spindle: outside = clockwise, inside = counter-clockwise; an outline can force CW or CCW
       const wantCCW=L.dir==='cw'?false:L.dir==='ccw'?true:(L.side==='in')===(p.dir==='climb'); if(ccw!==wantCCW) q.reverse();
@@ -8636,7 +8637,7 @@ function makeJob(b){ const p=P(), o=origin(b), toMM=(x,y)=>[(x-o[0])*MM,(y-o[1])
         const a=q[bi], c=q[(bi+1)%q.length]; let pts; if(Math.hypot(bp[0]-a[0],bp[1]-a[1])<1) pts=q.slice(bi).concat(q.slice(0,bi)); else if(Math.hypot(bp[0]-c[0],bp[1]-c[1])<1){ const j=(bi+1)%q.length; pts=q.slice(j).concat(q.slice(0,j)); } else pts=[bp,...q.slice(bi+1),...q.slice(0,bi+1)]; q=pts; }
       else { let si=0; for(let i=1;i<q.length;i++) if(q[i][0]+q[i][1]<q[si][0]+q[si][1]) si=i; q=q.slice(si).concat(q.slice(0,si)); }
       return q.map(([x,y])=>toMM(x,y)); }); };
-    const stages=rough?[{paths:mk(p.finAllow/MM),passes,kind:'rough'},{paths:mk(0),passes:finPasses,kind:'finish'}]:[{paths:mk(0),passes,kind:'one'}];
+    const stages=rough?[{paths:mk(fin/MM),passes,kind:'rough'},{paths:mk(0),passes:finPasses,kind:'finish'}]:[{paths:mk(0),passes,kind:'one'}];
     for(const [dx,dy] of offs) for(const st of stages) for(const q of st.paths){ const m=q.map(([x,y])=>[x+dx,y+dy]); cuts.push({loop:L,mm:m,len:perim(m),passes:st.passes,kind:st.kind,tabs:L.side==='out'||L.side==='in'?p.tabs:0}); } }
   // inner contours of every copy first, then outer contours
   cuts.sort((a,c)=>c.loop.depth-a.loop.depth);
@@ -8921,6 +8922,9 @@ function distSeg(p,a,c){const dx=c[0]-a[0],dy=c[1]-a[1],l=dx*dx+dy*dy; let t=l?(
 function pickOrigin(w){const b=B(), R=12*devicePixelRatio/view.s; let best=null,bd=R*1.8; const cand=[...(b.holes||[]).map(h=>[h.x,h.y]), ...(b.loops||[]).flatMap(L=>L.pts)]; for(const q of cand){const d=Math.hypot(q[0]-w[0],q[1]-w[1]); if(d<bd){bd=d;best=q;}}
   b.org=best?[best[0],best[1]]:[w[0],w[1]]; $('originSel').value='pick'; picking=false; $('pickBtn').setAttribute('aria-pressed','false'); refresh(); toast(best?'원점을 가장 가까운 점에 붙였습니다':'클릭한 위치를 원점으로 썼습니다');}
 function setStartAt(w){ const b=B(); if(!b||!b.loops) return; const R=12*devicePixelRatio/view.s; let best=null,bd=R;
+  // a click on a start marker (green dot) reverses that outline's cutting direction
+  const J=jobCache; if(J&&!(drag&&drag.shift)){ let hit=null,hd=R; for(const c of J.cuts){ const s=[c.mm[0][0]/MM+J.o[0],c.mm[0][1]/MM+J.o[1]], d=Math.hypot(s[0]-w[0],s[1]-w[1]); if(d<hd){hd=d;hit=c.loop;} }
+    if(hit){ pushHist(); const autoCW=(hit.side==='in')===($('dir').value!=='climb'); const cw=hit.dir?hit.dir==='cw':autoCW; hit.dir=cw?'ccw':'cw'; buildLoopsUI(); refresh(); toast(`윤곽 ${hit.id} 방향을 ${cw?'반시계':'시계'}로 바꿨습니다`); return; } }
   for(const L of b.loops){ if(!L.on) continue; for(let i=0;i<L.pts.length;i++){ const d=distSeg(w,L.pts[i],L.pts[(i+1)%L.pts.length]); if(d<bd){bd=d;best=L;} } }
   if(!best){ toast('켜진 외곽선 위를 클릭하세요'); return; } pushHist(); if(drag&&drag.shift){ best.start=null; toast(`윤곽 ${best.id} 시작점을 기본(왼쪽 아래)으로 돌렸습니다`); } else { best.start=[w[0],w[1]]; toast(`윤곽 ${best.id} 시작점을 정했습니다`); } refresh(); }
 function toggleAt(w){const h=hitTest(w); if(!h) return; h.on=!h.on; refresh();}
@@ -8932,7 +8936,7 @@ function circPts(cx,cy,r){const n=Math.max(24,Math.min(180,Math.ceil(2*Math.PI*r
 function shapeFrom(a,c){ if(mode==='circle'){ const r=snap(Math.hypot(c[0]-a[0],c[1]-a[1])); return {type:'circle',cx:a[0],cy:a[1],r,w:r}; }
   return {type:'rect',x:Math.min(a[0],c[0]),y:Math.min(a[1],c[1]),w:Math.abs(c[0]-a[0]),h:Math.abs(c[1]-a[1]),r:(+$('rectR').value||0)/MM}; }
 function shapePts(sh){ return sh.type==='circle'?circPts(sh.cx,sh.cy,sh.r):rectPts(sh.x,sh.y,sh.w,sh.h,sh.r); }
-function pushHist(){const b=B(); hist.push({name:b.name,loops:b.loops.map(L=>({pts:L.pts.map(q=>q.slice()),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,shape:L.shape?{...L.shape}:null})),holes:b.holes.map(h=>({...h})),rotA:b.rotA||0,org:b.org?b.org.slice():null}); if(hist.length>60) hist.shift();}
+function pushHist(){const b=B(); hist.push({name:b.name,loops:b.loops.map(L=>({pts:L.pts.map(q=>q.slice()),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,shape:L.shape?{...L.shape}:null})),holes:b.holes.map(h=>({...h})),rotA:b.rotA||0,org:b.org?b.org.slice():null}); if(hist.length>60) hist.shift();}
 function undo(){const b=B(); const h=hist.pop(); if(!h||h.name!==b.name){toast('되돌릴 작업이 없습니다');return;} b.loops=h.loops; b.holes=h.holes; const rc=(b.rotA||0)!==h.rotA; b.rotA=h.rotA; b.org=h.org; if(rc) fit(); selset.clear(); relayout(b); buildLoopsUI(); refresh(); renderEdit(); toast('되돌렸습니다');}
 function relayout(b){ for(const L of b.loops){ let x0=1e12,y0=1e12,x1=-1e12,y1=-1e12; for(const [x,y] of L.pts){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;} L.box=[x0,y0,x1,y1]; L.area=Math.abs(signedArea(L.pts)); }
   b.loops.sort((a,c)=>c.area-a.area); b.loops.forEach((L,i)=>{L.id=i+1; L.depth=b.loops.filter(o=>o!==L&&o.area>L.area&&inPoly(L.pts[0],o.pts)).length; if(!L.side) L.side=L.depth%2===0?'out':'in';});
@@ -8942,7 +8946,7 @@ function addShape(sh){const b=B(); pushHist(); const L={pts:shapePts(sh),shape:s
 function addHole(w){const b=B(); pushHist(); const n=(b.holes.filter(h=>h.user).length)+1; const h={x:w[0],y:w[1],ref:'U'+n,user:true,on:true,key:Math.round(w[0])+','+Math.round(w[1])}; b.holes.push(h); selset=new Set([h]); refresh(); renderEdit();}
 function delSel(){const b=B(); if(!selset.size) return; pushHist(); b.loops=b.loops.filter(L=>!selset.has(L)); b.holes=b.holes.filter(h=>!selset.has(h)); const n=selset.size; selset.clear(); relayout(b); refresh(); renderEdit(); toast(`${n}개 삭제했습니다`);}
 function setMode(m){mode=m; picking=false; $('pickBtn').setAttribute('aria-pressed','false'); for(const bt of document.querySelectorAll('#tools button[data-m]')) bt.setAttribute('aria-pressed',bt.dataset.m===m); cv.style.cursor=m==='select'?'default':'crosshair';
-  $('modeNote').textContent={toggle:'클릭: 외곽·홀 가공 켜기/끄기',select:'클릭: 선택 (Shift 추가), 끌기: 이동, 흰 네모 끌기: 크기 조정 (0.1mm 단위), Delete: 삭제',hole:'클릭: 홀 추가, 기존 홀 끌기: 이동 (0.1mm 단위)',rect:'빈 곳 끌기: 사각형 그리기, 선 끌기: 이동, 흰 네모 끌기: 크기 조정. 정확한 치수는 왼쪽 "도면 편집"',circle:'중심에서 끌기: 원 그리기, 선 끌기: 이동, 흰 네모 끌기: 지름 조정',measure:'첫 점을 클릭하세요 (모서리·홀 중심·외곽선에 붙음)',start:'외곽선 위를 클릭: 그 윤곽의 가공 시작 위치 (초록 점·화살표가 시작점과 방향). Shift+클릭: 기본 위치로'}[m]; if(m!=='measure'){meas.a=meas.b=meas.hover=null;} if(m!=='select'){selset.clear(); renderEdit();} draw();}
+  $('modeNote').textContent={toggle:'클릭: 외곽·홀 가공 켜기/끄기',select:'클릭: 선택 (Shift 추가), 끌기: 이동, 흰 네모 끌기: 크기 조정 (0.1mm 단위), Delete: 삭제',hole:'클릭: 홀 추가, 기존 홀 끌기: 이동 (0.1mm 단위)',rect:'빈 곳 끌기: 사각형 그리기, 선 끌기: 이동, 흰 네모 끌기: 크기 조정. 정확한 치수는 왼쪽 "도면 편집"',circle:'중심에서 끌기: 원 그리기, 선 끌기: 이동, 흰 네모 끌기: 지름 조정',measure:'첫 점을 클릭하세요 (모서리·홀 중심·외곽선에 붙음)',start:'외곽선 위를 클릭: 그 윤곽의 가공 시작 위치. 초록 점을 클릭: 방향 반대로. Shift+클릭: 기본 위치로'}[m]; if(m!=='measure'){meas.a=meas.b=meas.hover=null;} if(m!=='select'){selset.clear(); renderEdit();} draw();}
 document.addEventListener('keydown',e=>{ if(e.target.matches('input,select,textarea')) return; if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault(); undo();} else if(e.key==='Delete'||e.key==='Backspace'){ if(selset.size){e.preventDefault(); delSel();} } else if(e.key==='Escape'){selset.clear(); renderEdit(); draw();} });
 function renderEdit(){const el=$('editBox'), b=B(); if(!b){el.innerHTML='';return;} const o=jobCache?jobCache.o:origin(b), mm=v=>(v*MM).toFixed(2);
   const items=[...selset]; let h='';
@@ -8979,10 +8983,10 @@ function buildLoopsUI(){const b=B(), el=$('loops'); el.innerHTML=''; if(!b.loops
   for(const L of b.loops){ const [x0,y0,x1,y1]=L.box; const row=document.createElement('div'); row.className='item';
     row.innerHTML=`<input type="checkbox" id="lp${L.id}" ${L.on?'checked':''}><label for="lp${L.id}">윤곽 ${L.id} <span class="m">${((x1-x0)*MM).toFixed(1)}×${((y1-y0)*MM).toFixed(1)}</span></label><select aria-label="가공 위치"><option value="out">바깥</option><option value="in">안쪽</option><option value="on">선 위</option></select>`;
     const sub=document.createElement('div'); sub.className='sub';
-    sub.innerHTML=`<select aria-label="절삭 방향"><option value="">방향: 기본</option><option value="cw">시계 방향 (CW)</option><option value="ccw">반시계 (CCW)</option></select><label class="chk"><input type="checkbox"> 황삭+정삭</label>`;
-    const ds=sub.querySelector('select'), rc=sub.querySelector('input');
-    const syncSub=()=>{ const autoCW=(L.side==='in')===($('dir').value!=='climb'); ds.options[0].textContent=`방향: 기본 (${L.side==='on'?'-':autoCW?'시계':'반시계'})`; ds.value=L.dir||''; rc.checked=roughOf(L); rc.disabled=L.side==='on'; sub.hidden=!L.on; };
-    ds.onchange=()=>{ L.dir=ds.value||null; refresh(); }; rc.onchange=()=>{ L.rough=rc.checked; refresh(); };
+    sub.innerHTML=`<select aria-label="절삭 방향"><option value="">방향: 기본</option><option value="cw">시계 방향 (CW)</option><option value="ccw">반시계 (CCW)</option></select><label class="chk"><input type="checkbox"> 황삭+정삭</label><label class="chk fin">정삭 두께 <input type="number" step="0.05" min="0.05" style="width:58px;font-size:12px;padding:2px 4px"> mm</label>`;
+    const ds=sub.querySelector('select'), rc=sub.querySelector('input'), fi=sub.querySelector('.fin input'), fl=sub.querySelector('.fin');
+    const syncSub=()=>{ const autoCW=(L.side==='in')===($('dir').value!=='climb'); ds.options[0].textContent=`방향: 기본 (${L.side==='on'?'-':autoCW?'시계':'반시계'})`; ds.value=L.dir||''; rc.checked=roughOf(L); rc.disabled=L.side==='on'; fl.hidden=!roughOf(L); fi.value=L.fin!=null?L.fin:(+$('finAllow').value||0.2); sub.hidden=!L.on; };
+    ds.onchange=()=>{ L.dir=ds.value||null; refresh(); }; rc.onchange=()=>{ L.rough=rc.checked; syncSub(); refresh(); }; fi.onchange=()=>{ const v=parseFloat(fi.value); L.fin=v>0?v:null; refresh(); };
     row.querySelector('input').onchange=e=>{L.on=e.target.checked; syncSub(); refresh();}; const s=row.querySelector('select'); s.value=L.side; s.onchange=()=>{L.side=s.value; syncSub(); refresh();}; syncSub(); row.appendChild(sub); el.appendChild(row);} }
 function refresh(){const b=B(); if(!b) return;
   if(b.isNc){ jobCache=null; b._g={text:b.ncText}; const S=parseSim(b.ncText); let zmin=0; for(const g of S.segs) zmin=Math.min(zmin,g.z1);
@@ -9016,7 +9020,7 @@ $('preset').onchange=e=>{applyPreset(e.target.value); refresh();};
 $('presetReset').onclick=()=>{const n=$('preset').value; store.set('preset.'+n,null); applyPreset(n); refresh(); toast('기본값으로 되돌렸습니다');};
 applyPreset(store.get('last')||'plate');
 for(const id of ['nx','ny','gx','gy']) $(id).addEventListener('change',()=>{refresh(); fit();});
-$('dir').addEventListener('change',()=>buildLoopsUI());
+$('dir').addEventListener('change',()=>buildLoopsUI()); $('finAllow').addEventListener('change',()=>buildLoopsUI());
 for(const id of ['tool','thick','over','step','feed','plunge','rpm','dwell','safe','dir','nTabs','tabW','tabH','holeD','finAllow','finStep','drillN','drillUp']) $(id).addEventListener('change',()=>{ savePreset(); refresh(); });
 $('holeSrc').onchange=()=>{const b=B(); computeHoles(b); refresh();};
 $('holesAll').onclick=()=>{for(const h of B().holes||[]) h.on=true; refresh();};
@@ -9041,7 +9045,7 @@ $('zipBtn').onclick=async()=>{const b=B(); if(!b||!b._g||b.isNc) return; await s
 const SETTING_IDS=['preset',...PKEYS,'holeSrc','originSel','nx','ny','gx','gy','rectR'];
 function projectJSON(b){ const st={}; for(const id of SETTING_IDS) if($(id)) st[id]=$(id).value;
   return {app:'일렉트레이너 CNC CAM',version:1,name:b.name,savedAt:new Date().toISOString(),kind:b.isDxf?'drawing':'gerber',ext:b.ext,rotA:b.rotA||0,org:b.org||null,settings:st,
-    loops:b.loops.map(L=>({pts:L.pts.map(([x,y])=>[Math.round(x*10)/10,Math.round(y*10)/10]),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,shape:L.shape||null})),
+    loops:b.loops.map(L=>({pts:L.pts.map(([x,y])=>[Math.round(x*10)/10,Math.round(y*10)/10]),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,shape:L.shape||null})),
     holes:b.holes.map(h=>({x:h.x,y:h.y,ref:h.ref,on:h.on,user:!!h.user,d:h.d}))}; }
 $('projBtn').onclick=async()=>{const b=B(); if(!b||!b.loops||b.isNc){toast('저장할 작업이 없습니다'); return;} const zip=new JSZip();
   zip.file('cncproject.json',JSON.stringify(projectJSON(b))); for(const [fn,bytes] of Object.entries(b.files||{})) zip.file('src/'+fn,bytes);
@@ -9051,7 +9055,7 @@ async function loadCamProject(zip,fallbackName){ const P=JSON.parse(await zip.fi
   let name=P.name||fallbackName; while(boards[name]) name+=' (2)';
   let b; if(P.kind==='gerber'&&Object.keys(files).length){ b=buildBoard(name,files); } else { b={name,files:{},layers:{},srcNames:{},ext:P.ext,isDxf:true,dxfHoles:[]}; }
   b.ext=P.ext||b.ext; b.comps=[]; b.fromProject=true; b.rotA=P.rotA||0; b.org=P.org||null;
-  b.loops=P.loops.map(L=>({pts:L.pts,on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,shape:L.shape||undefined})); relayout(b);
+  b.loops=P.loops.map(L=>({pts:L.pts,on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,shape:L.shape||undefined})); relayout(b);
   b.holes=P.holes.map(h=>({...h,keep:true,key:Math.round(h.x)+','+Math.round(h.y)}));
   for(const [id,v] of Object.entries(P.settings||{})) if($(id)) $(id).value=v;
   boards[name]=b; return name; }
