@@ -449,7 +449,7 @@ function draw2D(d){
   if(!d.view) fit2D(d);
   const {s,cx,cy}=d.view; g2.setTransform(dpr*s,0,0,-dpr*s,dpr*(r.width/2-cx*s),dpr*(r.height/2+cy*s));
   const on=new Map(d.layers.map(l=>[l.name,l.on])); const lw=1/s;
-  for(const it of d.items){ if(!on.get(it.layer)) continue; const c=it.css||(it.col===7?'#e8ecf1':aciColor(it.col));
+  for(const it of d.items){ if(!on.get(it.layer)||(d.hideDim&&it.dim)) continue; const c=it.css||(it.col===7?'#e8ecf1':aciColor(it.col));
     if(it.k==='p'){ g2.strokeStyle=c; g2.lineWidth=lw; g2.beginPath(); g2.moveTo(it.pts[0][0],it.pts[0][1]); for(let i=1;i<it.pts.length;i++) g2.lineTo(it.pts[i][0],it.pts[i][1]); if(it.closed) g2.closePath(); g2.stroke(); }
     else if(it.k==='f'){ g2.fillStyle=c; g2.beginPath(); it.pts.forEach((p,i)=>i?g2.lineTo(p[0],p[1]):g2.moveTo(p[0],p[1])); g2.closePath(); g2.fill(); }
     else if(it.k==='t'&&it.h*s>2){ g2.save(); g2.translate(it.x,it.y); g2.rotate(it.rot); g2.scale(1,-1); g2.fillStyle=c; g2.font=`${it.h}px "Malgun Gothic",sans-serif`;
@@ -490,7 +490,7 @@ function enter2D(d){
   hint2(d); upMeas2(d);
 }
 function summarizeHoles(cs){ const m=new Map(); for(const c of cs){ const k=(Math.round(c.r*2*100)/100).toFixed(2); m.set(k,(m.get(k)||0)+1); } return [...m].map(([d,n])=>({d:+d,n})).sort((a,b)=>a.d-b.d); }
-function hint2(d){ $('hint').hidden=false; if(!d.measure&&!d.calib){ $('hint').textContent='끌기: 이동 · 휠: 확대/축소 · 자동 치수는 화면에 보이는 부품 기준 (도면틀은 화면 밖으로)'; return; } if(d.calib){ $('hint').textContent='축척 맞추기: 길이를 아는 두 점(치수선 끝 등)을 차례로 클릭하세요'; return; } $('hint').textContent=d.measure?'두 점을 클릭하면 거리를 잽니다 (끝점·원 중심에 붙음) · 세 번째 클릭은 새로 시작':'끌기: 이동 · 휠: 확대/축소 · 원에 마우스를 올리면 지름 표시'; }
+function hint2(d){ $('hint').hidden=false; if(!d.measure&&!d.calib){ $('hint').textContent='끌기: 이동 · 휠: 확대/축소 · 자동 치수: 도면틀·등각도·기존 치수는 빼고 부품 뷰마다 KS 기준으로 붙임'; return; } if(d.calib){ $('hint').textContent='축척 맞추기: 길이를 아는 두 점(치수선 끝 등)을 차례로 클릭하세요'; return; } $('hint').textContent=d.measure?'두 점을 클릭하면 거리를 잽니다 (끝점·원 중심에 붙음) · 세 번째 클릭은 새로 시작':'끌기: 이동 · 휠: 확대/축소 · 원에 마우스를 올리면 지름 표시'; }
 function upMeas2(d){ const m=$('meas'); if(!m) return; if(d.mpts.length===2){ const [a,b]=d.mpts; const dx=b[0]-a[0], dy=b[1]-a[1];
     m.innerHTML=`거리 <b>${f2(Math.hypot(dx,dy))}</b> ${d.unit}<br>가로 ${f2(Math.abs(dx))} · 세로 ${f2(Math.abs(dy))} · 각도 ${f2(Math.atan2(dy,dx)*180/Math.PI)}°`; }
   else if(d.measure) m.textContent=d.mpts.length?'두 번째 점을 클릭하세요.':'첫 번째 점을 클릭하세요.'; }
@@ -540,9 +540,10 @@ function saveDXF(d){
   for(const l of d.layers) out(0,'LAYER',2,lname(l.name),70,0,62,l.css?cssToAci(l.css):(l.col||7),6,'CONTINUOUS');
   out(0,'ENDTAB',0,'ENDSEC',0,'SECTION',2,'ENTITIES');
   let cnt=0;
-  for(const it of d.items){ if(!on.get(it.layer)) continue; const ly=lname(it.layer), col=it.css?cssToAci(it.css):(it.col||7); cnt++;
+  for(const it of d.items){ if(!on.get(it.layer)||(d.hideDim&&it.dim)) continue; const ly=lname(it.layer), col=it.css?cssToAci(it.css):(it.col||7); cnt++;
     if(it.circ){ out(0,'CIRCLE',8,ly,62,col,10,n(it.circ.x),20,n(it.circ.y),30,0,40,n(it.circ.r)); continue; }
     if(it.k==='t'){ for(const [k,ln] of it.text.split('\n').entries()){ const yy=it.y-k*it.h*1.4; if(it.att===8) out(0,'TEXT',8,ly,62,col,10,n(it.x),20,n(yy),30,0,40,n(it.h),1,enc(ln),50,n(it.rot*180/Math.PI),72,1,11,n(it.x),21,n(yy),31,0); else out(0,'TEXT',8,ly,62,col,10,n(it.x),20,n(yy),30,0,40,n(it.h),1,enc(ln),50,n(it.rot*180/Math.PI)); } continue; }
+    if(it.k==='f'&&(it.pts.length===3||it.pts.length===4)){ const q=it.pts, q4=q[3]||q[2]; out(0,'SOLID',8,ly,62,col,10,n(q[0][0]),20,n(q[0][1]),30,0,11,n(q[1][0]),21,n(q[1][1]),31,0,12,n(q[2][0]),22,n(q[2][1]),32,0,13,n(q4[0]),23,n(q4[1]),33,0); continue; }
     const P=it.k==='f'?[...it.pts,it.pts[0]]:it.pts;
     if(P.length===2&&!it.closed){ out(0,'LINE',8,ly,62,col,10,n(P[0][0]),20,n(P[0][1]),30,0,11,n(P[1][0]),21,n(P[1][1]),31,0); continue; }
     out(0,'POLYLINE',8,ly,62,col,66,1,10,0,20,0,30,0,70,it.closed?1:0); for(const q of P) out(0,'VERTEX',8,ly,10,n(q[0]),20,n(q[1]),30,0); out(0,'SEQEND',8,ly); }
@@ -603,64 +604,114 @@ async function pdfToDrawing(d,pageNo){
   return dd;
 }
 const AD='DIM-AUTO';
-function clearAutoDim(d){ d.items=d.items.filter(it=>it.layer!==AD); d.layers=d.layers.filter(l=>l.name!==AD); }
+function clearAutoDim(d){ d.items=d.items.filter(it=>it.layer!==AD); d.layers=d.layers.filter(l=>l.name!==AD); d.hideDim=false; for(const l of d.layers) if((d.dimOff||[]).includes(l.name)) l.on=true; d.dimOff=[]; }
 const fmtN=v=>(+(+v).toFixed(2)).toString();
+// split visible geometry into connected groups (views), drop the drawing frame/title block, keep part views
+function findViews(geo){
+  let X0=1e18,Y0=1e18,X1=-1e18,Y1=-1e18; for(const it of geo) for(const p of it.pts){ if(p[0]<X0)X0=p[0]; if(p[0]>X1)X1=p[0]; if(p[1]<Y0)Y0=p[1]; if(p[1]>Y1)Y1=p[1]; }
+  const tol=Math.max(X1-X0,Y1-Y0,1e-6)*0.0015, grid=new Map(), par=geo.map((_,i)=>i);
+  const find=i=>{ while(par[i]!==i){ par[i]=par[par[i]]; i=par[i]; } return i; }, uni=(a,b)=>{ a=find(a); b=find(b); if(a!==b) par[b]=a; };
+  const key=(gx,gy)=>gx+','+gy;
+  geo.forEach((it,i)=>{ const P=it.closed?[...it.pts,it.pts[0]]:it.pts;
+    const add=(x,y)=>{ const gx=Math.floor(x/tol), gy=Math.floor(y/tol);
+      for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++){ const c=grid.get(key(gx+dx,gy+dy)); if(c) for(const j of c) if(j!==i) uni(i,j); }
+      const k=key(gx,gy); const c=grid.get(k); if(!c) grid.set(k,[i]); else if(c[c.length-1]!==i) c.push(i); };
+    for(let s=0;s<P.length;s++){ const a=P[s], b=P[s+1]||null; add(a[0],a[1]); if(!b) continue; const n=Math.min(4000,Math.floor(Math.hypot(b[0]-a[0],b[1]-a[1])/tol));
+      for(let t=1;t<n;t++) add(a[0]+(b[0]-a[0])*t/n,a[1]+(b[1]-a[1])*t/n); } });
+  const comps=new Map(); geo.forEach((it,i)=>{ const r=find(i); let c=comps.get(r); if(!c){ c={items:[],x0:1e18,y0:1e18,x1:-1e18,y1:-1e18}; comps.set(r,c); } c.items.push(it); for(const p of it.pts){ if(p[0]<c.x0)c.x0=p[0]; if(p[0]>c.x1)c.x1=p[0]; if(p[1]<c.y0)c.y0=p[1]; if(p[1]>c.y1)c.y1=p[1]; } });
+  let cs=[...comps.values()]; const inside=(a,b)=>a!==b&&a.x0>=b.x0-tol&&a.x1<=b.x1+tol&&a.y0>=b.y0-tol&&a.y1<=b.y1+tol;
+  const isCircle=c=>c.items.length===1&&c.items[0].circ;
+  // drawing frame: sheet-sized, many lines, its own lines stay near its border, and other line work (views) sits inside it
+  // (sheet proportions ~1.41 for A sizes, at least A5-ish in drawing units, with a real view inside)
+  const frames=cs.filter(c=>{ const W=c.x1-c.x0, H=c.y1-c.y0, m=Math.min(W,H), asp=Math.max(W,H)/(m||1); if(m<100||asp<1.25||asp>1.6||c.items.length<6) return false;
+    const inner=cs.filter(o=>inside(o,c)&&!isCircle(o)&&Math.max(o.x1-o.x0,o.y1-o.y0)>=m*0.08); if(!inner.length) return false;
+    let tot=0, mid=0; for(const it of c.items) for(const p of it.pts){ tot++; if(p[0]>c.x0+W*0.25&&p[0]<c.x1-W*0.25&&p[1]>c.y0+H*0.25&&p[1]<c.y1-H*0.25) mid++; }
+    return mid<=tot*0.03; });
+  // a plain outer border around a frame we found is part of the sheet too
+  for(let more=true;more&&frames.length;){ more=false; for(const c of cs) if(!frames.includes(c)&&frames.some(f=>inside(f,c))){ frames.push(c); more=true; } }
+  cs=cs.filter(c=>!frames.includes(c));
+  // things inside a frame's title block area are not parts: keep only groups not inside a frame's border strip
+  // nest holes, slots and centre marks into the group that contains them
+  const top=cs.filter(c=>!cs.some(o=>o!==c&&inside(c,o)&&(o.x1-o.x0)*(o.y1-o.y0)>(c.x1-c.x0)*(c.y1-c.y0)));
+  for(const c of cs) if(!top.includes(c)){ const o=top.filter(t=>inside(c,t)).sort((a,b)=>(a.x1-a.x0)*(a.y1-a.y0)-(b.x1-b.x0)*(b.y1-b.y0))[0]; if(o) o.items.push(...c.items); }
+  const big=Math.max(0,...top.map(c=>Math.max(c.x1-c.x0,c.y1-c.y0)));
+  const ortho=c=>{ const sz=Math.max(c.x1-c.x0,c.y1-c.y0); let ax=0, all=0; for(const it of c.items){ const P=it.closed?[...it.pts,it.pts[0]]:it.pts; for(let i=0;i+1<P.length;i++){ const dx=P[i+1][0]-P[i][0], dy=P[i+1][1]-P[i][1], l=Math.hypot(dx,dy); if(l<sz*0.03) continue; all+=l; if(Math.abs(dx)<l*0.02||Math.abs(dy)<l*0.02) ax+=l; } } return all===0||ax>=all*0.6; };
+  let views=top.filter(c=>Math.max(c.x1-c.x0,c.y1-c.y0)>=big*0.08&&!isCircle(c)&&ortho(c));
+  // a frame we found: drop leftover groups touching its title block (bottom-right) region or lying in its border strip
+  for(const f of frames){ const m=Math.min(f.x1-f.x0,f.y1-f.y0)*0.06; views=views.filter(v=>!(inside(v,f)&&(v.x0<f.x0+m||v.x1>f.x1-m||v.y0<f.y0+m||v.y1>f.y1-m))||!inside(v,f)); }
+  return {views, frames:frames.length, frameW:frames.length?Math.max(...frames.map(f=>f.x1-f.x0)):0};
+}
 function autoDim(d){
   clearAutoDim(d);
   const r=stage.getBoundingClientRect(); const [vx0,vy1]=S2W(d,0,0), [vx1,vy0]=S2W(d,r.width,r.height);
   const inV=(p)=>p[0]>=vx0&&p[0]<=vx1&&p[1]>=vy0&&p[1]<=vy1;
   const on=new Map(d.layers.map(l=>[l.name,l.on]));
-  const geo=d.items.filter(it=>it.k==='p'&&!it.dim&&on.get(it.layer)&&it.pts.every(inV));
+  const geo=d.items.filter(it=>it.k==='p'&&!it.dim&&on.get(it.layer)&&it.pts.length&&it.pts.every(inV));
   if(!geo.length){ toast('화면 안에 온전히 보이는 부품 선이 없습니다. 치수를 붙일 부품을 확대해서 화면에 맞춘 뒤 누르세요.'); return; }
-  let x0=1e18,y0=1e18,x1=-1e18,y1=-1e18; for(const it of geo) for(const p of it.pts){ if(p[0]<x0)x0=p[0]; if(p[0]>x1)x1=p[0]; if(p[1]<y0)y0=p[1]; if(p[1]>y1)y1=p[1]; }
-  const W=x1-x0, H=y1-y0; if(W<=0&&H<=0) return;
-  const h=Math.max(W,H)*0.022, gap=h*0.6, ar=h*0.9; const out=[];
+  const {views,frames,frameW}=findViews(geo);
+  if(!views.length){ toast('도면틀 안에서 부품 뷰를 찾지 못했습니다. 부품만 화면에 보이게 확대한 뒤 다시 눌러 주세요.'); return; }
+  const big=Math.max(...views.map(v=>Math.max(v.x1-v.x0,v.y1-v.y0)));
+  // KS B 0001: text 3.5, 3:1 filled arrows, extension line 1 off the part and 2 past the dimension line, first line 10 out, then every 7.
+  // Sizes are paper mm times the drawing scale (sheet size from the frame, else from the part size).
+  const nice=v=>[1,2,2.5,5,10,20,25,50,100].find(n=>n>=v*0.999)||Math.ceil(v);
+  const k=frameW?nice(frameW/420>1?Math.max(1,frameW/420*0.97):1):nice(Math.max(1,big/250));
+  const h=3.5*k, gap=1*k, over=2*k, off1=10*k, step=7*k, ar=3.5*k, tg=0.8*k; const out=[]; const part=d.adMode!=='asm';
   const L=(pts)=>out.push({k:'p',layer:AD,col:4,pts,closed:false});
   const T=(x,y,text,rot=0,att=8)=>out.push({k:'t',layer:AD,col:4,x,y,h,rot,text,att});
-  const arrow=(p,dir)=>{ const [ux,uy]=dir, a=0.35; L([[p[0]+ar*(ux*Math.cos(a)-uy*Math.sin(a)),p[1]+ar*(ux*Math.sin(a)+uy*Math.cos(a))],p,[p[0]+ar*(ux*Math.cos(-a)-uy*Math.sin(-a)),p[1]+ar*(ux*Math.sin(-a)+uy*Math.cos(-a))]]); };
-  // linear dimension between a and b, measured along axis ('x' or 'y'), dimension line at offset position `at`
-  const dimLin=(a,b,axis,at)=>{ if(axis==='x'){ const len=Math.abs(b-a); if(len<1e-6) return; L([[a,at.from],[a,at.pos+(at.pos>at.from?gap:-gap)]]); L([[b,at.from2??at.from],[b,at.pos+(at.pos>at.from?gap:-gap)]]); L([[a,at.pos],[b,at.pos]]); arrow([a,at.pos],[Math.sign(b-a),0]); arrow([b,at.pos],[Math.sign(a-b),0]); T((a+b)/2,at.pos+h*0.25,fmtN(len)); }
-    else { const len=Math.abs(b-a); if(len<1e-6) return; L([[at.from,a],[at.pos+(at.pos>at.from?gap:-gap),a]]); L([[at.from,b],[at.pos+(at.pos>at.from?gap:-gap),b]]); L([[at.pos,a],[at.pos,b]]); arrow([at.pos,a],[0,Math.sign(b-a)]); arrow([at.pos,b],[0,Math.sign(a-b)]); T(at.pos-h*0.25,(a+b)/2,fmtN(len),Math.PI/2); } };
-  // 1) overall size: below and left
-  dimLin(x0,x1,'x',{from:y0-gap,pos:y0-h*5});
-  dimLin(y0,y1,'y',{from:x0-gap,pos:x0-h*5});
-  // 2) holes inside the part
-  const holes=d.circles.filter(c=>on.get(c.layer)&&c.x>=x0-1e-6&&c.x<=x1+1e-6&&c.y>=y0-1e-6&&c.y<=y1+1e-6&&c.r*2<Math.min(W,H)*0.9);
-  // hole positions as chain dimensions along the top (X) and the right (Y)
-  const uniq=(vals)=>{ const s=[...vals].sort((a,b)=>a-b), o=[]; for(const v of s) if(!o.length||Math.abs(v-o[o.length-1])>Math.max(W,H)*1e-4) o.push(v); return o; };
-  if(holes.length){
-    if(d.adMode==='asm'){ // finished product: every mounting hole measured from the outline edge (bottom-left), stacked
-      const xs=uniq(holes.map(c=>c.x)).filter(v=>v-x0>1e-6); xs.forEach((v,i)=>dimLin(x0,v,'x',{from:y1+gap,pos:y1+h*(2.6+i*2.2)}));
-      const ys=uniq(holes.map(c=>c.y)).filter(v=>v-y0>1e-6); ys.forEach((v,i)=>dimLin(y0,v,'y',{from:x1+gap,pos:x1+h*(2.6+i*2.2)})); }
-    else { // single part: chain dimensions between machining points
-      const xs=uniq([x0,...holes.map(c=>c.x),x1]); for(let i=0;i+1<xs.length;i++) dimLin(xs[i],xs[i+1],'x',{from:y1+gap,pos:y1+h*2.6});
-      const ys=uniq([y0,...holes.map(c=>c.y),y1]); for(let i=0;i+1<ys.length;i++) dimLin(ys[i],ys[i+1],'y',{from:x1+gap,pos:x1+h*2.6}); }
-    // diameter callouts, one per size
-    const groups=new Map(); for(const c of holes){ const k=(Math.round(c.r*200)/100).toFixed(2); (groups.get(k)||groups.set(k,[]).get(k)).push(c); }
-    // one callout per hole position; concentric sizes (e.g. counterbore, tapped hole) stack in the same callout
-    const co=[]; const tol=Math.max(W,H)*1e-4;
-    for(const [k,cs] of groups){ const txt=(cs.length>1?cs.length+'X ':'')+'Ø'+fmtN(+k); let hit=null;
-      for(const c of cs){ hit=co.find(o=>Math.hypot(o.c.x-c.x,o.c.y-c.y)<tol); if(hit) break; }
-      if(hit){ hit.lines.push(txt); if(cs[0].r>hit.c.r) hit.c={...hit.c,r:cs.find(c=>Math.hypot(hit.c.x-c.x,hit.c.y-c.y)<tol).r}; }
-      else co.push({c:cs.reduce((a,b)=>(b.x+b.y<a.x+a.y?b:a)),lines:[txt]}); }
-    co.forEach((o,gi)=>{ const c=o.c, ang=Math.PI/4+gi*0.35;
-      const ex=[c.x+c.r*Math.cos(ang),c.y+c.r*Math.sin(ang)], kn=[c.x+(c.r+h*2.2)*Math.cos(ang),c.y+(c.r+h*2.2)*Math.sin(ang)+(o.lines.length-1)*h*1.4], tail=[kn[0]+h*1.2,kn[1]];
-      L([ex,kn,tail]); arrow(ex,[Math.cos(ang),Math.sin(ang)]); o.lines.forEach((t,i)=>T(tail[0]+h*0.2,tail[1]+h*0.15-i*h*1.4,t,0,7)); }); }
-  // 3) fillets (arcs) and chamfers (45° short edges)
-  const part=d.adMode!=='asm';
-  const arcsIn=!part?[]:(d.arcs||[]).filter(a=>on.get(a.layer)&&a.mid[0]>=x0-1e-6&&a.mid[0]<=x1+1e-6&&a.mid[1]>=y0-1e-6&&a.mid[1]<=y1+1e-6&&a.r<Math.min(W,H)*0.5);
-  const rg=new Map(); for(const a of arcsIn){ const k=fmtN(a.r); (rg.get(k)||rg.set(k,[]).get(k)).push(a); }
-  for(const [k,as] of rg){ const a=as[0]; const ux=(a.mid[0]-a.x)/(a.r||1), uy=(a.mid[1]-a.y)/(a.r||1); const kn=[a.mid[0]+ux*h*2.2,a.mid[1]+uy*h*2.2], tail=[kn[0]+(ux>=0?h*1.2:-h*1.2),kn[1]];
-    L([a.mid,kn,tail]); arrow(a.mid,[ux,uy]); T(ux>=0?tail[0]+h*0.2:tail[0]-h*0.2-h*0.6*((as.length>1?3:0)+1+k.length),tail[1]+h*0.15,(as.length>1?as.length+'X ':'')+'R'+k,0,7); }
-  const chams=!part?[]:(d.segs||[]).filter(([p,q,l])=>{ if(!on.get(l)||!inV(p)||!inV(q)) return false; const dx=q[0]-p[0], dy=q[1]-p[1], len=Math.hypot(dx,dy); if(len<=1e-6||len>Math.min(W,H)*0.25) return false;
-      const ang=Math.abs(Math.atan2(dy,dx)*180/Math.PI)%90; return Math.abs(ang-45)<1.5; });
-  const cg=new Map(); for(const [p,q] of chams){ const k=fmtN(Math.abs(q[0]-p[0])); (cg.get(k)||cg.set(k,[]).get(k)).push([p,q]); }
-  for(const [k,cs] of cg){ const [p,q]=cs[0]; const m=[(p[0]+q[0])/2,(p[1]+q[1])/2]; const cx=(x0+x1)/2, cy=(y0+y1)/2; const ux=Math.sign(m[0]-cx)||1, uy=Math.sign(m[1]-cy)||1;
-    const kn=[m[0]+ux*h*1.6,m[1]+uy*h*1.6], tail=[kn[0]+ux*h*1.2,kn[1]]; L([m,kn,tail]); arrow(m,[ux/Math.SQRT2,uy/Math.SQRT2]);
-    T(ux>0?tail[0]+h*0.2:tail[0]-h*0.2-h*0.6*(1+k.length+(cs.length>1?3:0)),tail[1]+h*0.15,(cs.length>1?cs.length+'X ':'')+'C'+k,0,7); }
+  const arrow=(p,dir)=>{ const [ux,uy]=dir, w=ar/6; out.push({k:'f',layer:AD,col:4,pts:[p,[p[0]+ux*ar-uy*w,p[1]+uy*ar+ux*w],[p[0]+ux*ar+uy*w,p[1]+uy*ar-ux*w]]}); };
+  const dimLin=(a,b,axis,at)=>{ const len=Math.abs(b-a); if(len<1e-6) return; const sg=at.pos>at.from?1:-1, f=at.from+sg*gap, e=at.pos+sg*over;
+    // narrow space (KS): arrows outside pointing in, value beside the dimension (first/last of a chain) or lifted above it (middle)
+    const txt=fmtN(len), tw=txt.length*h*0.62, lo=Math.min(a,b), hi=Math.max(a,b), narrow=len<tw+ar*2.4, sd=at.side??0;
+    const tc=!narrow?(a+b)/2:sd<0?lo-ar*1.6-tw/2:sd>0?hi+ar*1.6+tw/2:(a+b)/2, lift=narrow&&!sd?h*1.3:0;
+    const dl=narrow?[lo-ar*1.6-(sd<0?tw+ar*0.4:0),hi+ar*1.6+(sd>0?tw+ar*0.4:0)]:[lo,hi], adir=narrow?-1:1;
+    if(axis==='x'){ L([[a,f],[a,e]]); L([[b,f],[b,e]]); L([[dl[0],at.pos],[dl[1],at.pos]]); arrow([lo,at.pos],[adir,0]); arrow([hi,at.pos],[-adir,0]); T(tc,at.pos+tg+lift,txt); }
+    else { L([[f,a],[e,a]]); L([[f,b],[e,b]]); L([[at.pos,dl[0]],[at.pos,dl[1]]]); arrow([at.pos,lo],[0,adir]); arrow([at.pos,hi],[0,-adir]); T(at.pos-tg-lift,tc,txt,Math.PI/2); } };
+  let nH=0,nF=0,nC=0;
+  for(const v of views){ const {x0,y0,x1,y1}=v, W=x1-x0, H=y1-y0, eps=Math.max(W,H)*1e-3;
+    const inB=p=>p[0]>=x0-eps&&p[0]<=x1+eps&&p[1]>=y0-eps&&p[1]<=y1+eps;
+    // 1) overall size: below and left
+    // holes first so the overall size can sit outside the baseline stack (KS: smaller dimensions inside, larger outside)
+    const holes0=d.circles.filter(c=>on.get(c.layer)&&inB([c.x,c.y])&&inV([c.x,c.y])&&c.r*2<Math.min(W,H)*0.9);
+    const uq=(vals)=>{ const s=[...vals].sort((a,b)=>a-b), o=[]; for(const q of s) if(!o.length||Math.abs(q-o[o.length-1])>eps) o.push(q); return o; };
+    const bx=part?[]:uq(holes0.map(c=>c.x)).filter(q=>q-x0>eps&&x1-q>eps), by=part?[]:uq(holes0.map(c=>c.y)).filter(q=>q-y0>eps&&y1-q>eps);
+    if(W>eps) dimLin(x0,x1,'x',{from:y0,pos:y0-off1-bx.length*step,side:1});
+    if(H>eps) dimLin(y0,y1,'y',{from:x0,pos:x0-off1-by.length*step,side:1});
+    // 2) holes in this view
+    const holes=d.circles.filter(c=>on.get(c.layer)&&inB([c.x,c.y])&&inV([c.x,c.y])&&c.r*2<Math.min(W,H)*0.9); nH+=holes.length;
+    const uniq=(vals)=>{ const s=[...vals].sort((a,b)=>a-b), o=[]; for(const q of s) if(!o.length||Math.abs(q-o[o.length-1])>eps) o.push(q); return o; };
+    if(holes.length){
+      if(!part){ // finished product: mounting holes measured from the outline edge (bottom-left), stacked
+        bx.forEach((q,i)=>dimLin(x0,q,'x',{from:y0,pos:y0-off1-i*step,side:1}));
+        by.forEach((q,i)=>dimLin(y0,q,'y',{from:x0,pos:x0-off1-i*step,side:1})); }
+      else { // single part: chain dimensions between machining points
+        const xs=uniq([x0,...holes.map(c=>c.x),x1]); if(xs.length>2) for(let i=0;i+1<xs.length;i++) dimLin(xs[i],xs[i+1],'x',{from:y1,pos:y1+off1,side:i===0?-1:i+2===xs.length?1:0});
+        const ys=uniq([y0,...holes.map(c=>c.y),y1]); if(ys.length>2) for(let i=0;i+1<ys.length;i++) dimLin(ys[i],ys[i+1],'y',{from:x1,pos:x1+off1,side:i===0?-1:i+2===ys.length?1:0}); }
+      const groups=new Map(); for(const c of holes){ const k=(Math.round(c.r*200)/100).toFixed(2); (groups.get(k)||groups.set(k,[]).get(k)).push(c); }
+      const co=[];
+      for(const [k,cs] of groups){ const txt=(cs.length>1?cs.length+'×':'')+'Ø'+fmtN(+k); let hit=null;
+        for(const c of cs){ hit=co.find(o=>Math.hypot(o.c.x-c.x,o.c.y-c.y)<eps); if(hit) break; }
+        if(hit){ hit.lines.push(txt); const m=cs.find(c=>Math.hypot(hit.c.x-c.x,hit.c.y-c.y)<eps); if(m&&m.r>hit.c.r) hit.c={...hit.c,r:m.r}; }
+        else co.push({c:cs.reduce((a,b)=>(b.x+b.y<a.x+a.y?b:a)),lines:[txt]}); }
+      co.forEach((o,gi)=>{ const c=o.c, ang=Math.PI/4+gi*0.35;
+        const ex=[c.x+c.r*Math.cos(ang),c.y+c.r*Math.sin(ang)], kn=[c.x+(c.r+h*1.8)*Math.cos(ang),c.y+(c.r+h*1.8)*Math.sin(ang)+(o.lines.length-1)*h*1.4], tail=[kn[0]+h*1.2,kn[1]];
+        L([ex,kn,tail]); arrow(ex,[Math.cos(ang),Math.sin(ang)]); o.lines.forEach((t,i)=>T(tail[0]+h*0.2,tail[1]+h*0.15-i*h*1.4,t,0,7)); }); }
+    if(!part) continue;
+    // 3) fillets (arcs) and chamfers (45° short edges) of this view
+    const arcsIn=(d.arcs||[]).filter(a=>on.get(a.layer)&&inB(a.mid)&&inV(a.mid)&&a.r<Math.min(W,H)*0.5&&!d.circles.some(c=>Math.abs(c.x-a.x)<eps&&Math.abs(c.y-a.y)<eps&&Math.abs(c.r-a.r)<eps)); nF+=arcsIn.length;
+    const rg=new Map(); for(const a of arcsIn){ const k=fmtN(a.r); (rg.get(k)||rg.set(k,[]).get(k)).push(a); }
+    for(const [k,as] of rg){ const a=as[0]; const ux=(a.mid[0]-a.x)/(a.r||1), uy=(a.mid[1]-a.y)/(a.r||1); const kn=[a.mid[0]+ux*h*1.8,a.mid[1]+uy*h*1.8], tail=[kn[0]+(ux>=0?h*1.2:-h*1.2),kn[1]];
+      L([a.mid,kn,tail]); arrow(a.mid,[ux,uy]); T(ux>=0?tail[0]+h*0.2:tail[0]-h*0.2-h*0.6*((as.length>1?3:0)+1+k.length),tail[1]+h*0.15,(as.length>1?as.length+'×':'')+'R'+k,0,7); }
+    const chams=(d.segs||[]).filter(([p,q,l])=>{ if(!on.get(l)||!inB(p)||!inB(q)||!inV(p)||!inV(q)) return false; const dx=q[0]-p[0], dy=q[1]-p[1], len=Math.hypot(dx,dy); if(len<=1e-6||len>Math.min(W,H)*0.25) return false;
+        const ang=Math.abs(Math.atan2(dy,dx)*180/Math.PI)%90; return Math.abs(ang-45)<1.5; }); nC+=chams.length;
+    const cg=new Map(); for(const [p,q] of chams){ const k=fmtN(Math.abs(q[0]-p[0])); (cg.get(k)||cg.set(k,[]).get(k)).push([p,q]); }
+    for(const [k,cs] of cg){ const [p,q]=cs[0]; const m=[(p[0]+q[0])/2,(p[1]+q[1])/2]; const cx=(x0+x1)/2, cy=(y0+y1)/2; const ux=Math.sign(m[0]-cx)||1, uy=Math.sign(m[1]-cy)||1;
+      const kn=[m[0]+ux*h*1.4,m[1]+uy*h*1.4], tail=[kn[0]+ux*h*1.2,kn[1]]; L([m,kn,tail]); arrow(m,[ux/Math.SQRT2,uy/Math.SQRT2]);
+      T(ux>0?tail[0]+h*0.2:tail[0]-h*0.2-h*0.6*(1+k.length+(cs.length>1?3:0)),tail[1]+h*0.15,(cs.length>1?cs.length+'×':'')+'C'+k,0,7); } }
   d.items.push(...out); d.layers.push({name:AD,col:4,on:true,count:out.length});
+  d.hideDim=true; for(const l of d.layers) if(l.name!==AD&&/dim|치수/i.test(l.name)){ if(l.on) (d.dimOff||(d.dimOff=[])).push(l.name); l.on=false; }
   enter2D(d);
-  toast(`자동 치수(${part?'단품':'완제품'})를 붙였습니다: 외형 ${fmtN(W)} × ${fmtN(H)}, 홀 ${holes.length}개, 필렛 ${arcsIn.length}곳, 모따기 ${chams.length}곳. [DXF 저장]에 함께 들어갑니다.`);
+  const v0=views.slice().sort((a,b)=>(b.x1-b.x0)*(b.y1-b.y0)-(a.x1-a.x0)*(a.y1-a.y0))[0];
+  toast(`자동 치수(${part?'단품':'완제품'}): 부품 뷰 ${views.length}개${frames?' (도면틀 제외)':''}, 주 뷰 ${fmtN(v0.x1-v0.x0)} × ${fmtN(v0.y1-v0.y0)}, 홀 ${nH}개${part?`, 필렛 ${nF}곳, 모따기 ${nC}곳`:''}. [DXF 저장]에 함께 들어갑니다.`);
 }
 window.__sv={get cur(){return cur;},W2S};
 /* ===================== PDF ===================== */
