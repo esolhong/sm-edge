@@ -637,9 +637,15 @@ function autoDim(d){
       const ys=uniq([y0,...holes.map(c=>c.y),y1]); for(let i=0;i+1<ys.length;i++) dimLin(ys[i],ys[i+1],'y',{from:x1+gap,pos:x1+h*2.6}); }
     // diameter callouts, one per size
     const groups=new Map(); for(const c of holes){ const k=(Math.round(c.r*200)/100).toFixed(2); (groups.get(k)||groups.set(k,[]).get(k)).push(c); }
-    let gi=0; for(const [k,cs] of groups){ const c=cs.reduce((a,b)=>(b.x+b.y<a.x+a.y?b:a)); const ang=Math.PI/4+gi*0.35; gi++;
-      const ex=[c.x+c.r*Math.cos(ang),c.y+c.r*Math.sin(ang)], kn=[c.x+(c.r+h*2.2)*Math.cos(ang),c.y+(c.r+h*2.2)*Math.sin(ang)], tail=[kn[0]+h*1.2,kn[1]];
-      L([ex,kn,tail]); arrow(ex,[Math.cos(ang),Math.sin(ang)]); T(tail[0]+h*0.2,tail[1]+h*0.15,(cs.length>1?cs.length+'X ':'')+'Ø'+fmtN(+k),0,7); } }
+    // one callout per hole position; concentric sizes (e.g. counterbore, tapped hole) stack in the same callout
+    const co=[]; const tol=Math.max(W,H)*1e-4;
+    for(const [k,cs] of groups){ const txt=(cs.length>1?cs.length+'X ':'')+'Ø'+fmtN(+k); let hit=null;
+      for(const c of cs){ hit=co.find(o=>Math.hypot(o.c.x-c.x,o.c.y-c.y)<tol); if(hit) break; }
+      if(hit){ hit.lines.push(txt); if(cs[0].r>hit.c.r) hit.c={...hit.c,r:cs.find(c=>Math.hypot(hit.c.x-c.x,hit.c.y-c.y)<tol).r}; }
+      else co.push({c:cs.reduce((a,b)=>(b.x+b.y<a.x+a.y?b:a)),lines:[txt]}); }
+    co.forEach((o,gi)=>{ const c=o.c, ang=Math.PI/4+gi*0.35;
+      const ex=[c.x+c.r*Math.cos(ang),c.y+c.r*Math.sin(ang)], kn=[c.x+(c.r+h*2.2)*Math.cos(ang),c.y+(c.r+h*2.2)*Math.sin(ang)+(o.lines.length-1)*h*1.4], tail=[kn[0]+h*1.2,kn[1]];
+      L([ex,kn,tail]); arrow(ex,[Math.cos(ang),Math.sin(ang)]); o.lines.forEach((t,i)=>T(tail[0]+h*0.2,tail[1]+h*0.15-i*h*1.4,t,0,7)); }); }
   // 3) fillets (arcs) and chamfers (45° short edges)
   const part=d.adMode!=='asm';
   const arcsIn=!part?[]:(d.arcs||[]).filter(a=>on.get(a.layer)&&a.mid[0]>=x0-1e-6&&a.mid[0]<=x1+1e-6&&a.mid[1]>=y0-1e-6&&a.mid[1]<=y1+1e-6&&a.r<Math.min(W,H)*0.5);
