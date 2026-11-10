@@ -324,7 +324,7 @@ function aciColor(i){ if(i==null||i<0) return '#ffffff'; if(i<10) return ACI[i];
   const h=Math.floor((i-10)/10)*15, v=(i-10)%10; const l=[50,75,40,65,30,55,25,45,18,35][v], s=v%2?50:100; return `hsl(${h},${s}%,${l}%)`; }
 
 function parseDXFText(text){
-  const t=text.split(/\r?\n/); const pr=[]; for(let i=0;i+1<t.length;i+=2) pr.push([parseInt(t[i],10),t[i+1].replace(/\s+$/,'')]);
+  const t=text.split(/\r?\n/); const pr=[]; for(let i=0;i+1<t.length;i+=2) pr.push([parseInt(t[i],10),t[i+1].replace(/\s+$/,'').replace(/\\U\+([0-9A-Fa-f]{4})/g,(m,h)=>String.fromCharCode(parseInt(h,16)))]);
   const header={}, layers=[], blocks=[]; let entities=[];
   let i=0; const P=(o,k,v)=>{ (o[k]||(o[k]={}))[ 'xyz'[0] ]; };
   const pt=(g,c)=>({x:+(g[c]??0),y:+(g[c+10]??0),z:+(g[c+20]??0)});
@@ -394,14 +394,15 @@ function make2D(db){
   const bul=(m,a,c,bu)=>{ if(!bu) return [ap(m,c)]; const dx=c.x-a.x, dy=c.y-a.y; if(!dx&&!dy) return [ap(m,c)]; const k=(1-bu*bu)/(4*bu), cx=(a.x+c.x)/2-dy*k, cy=(a.y+c.y)/2+dx*k, th=4*Math.atan(bu), r=Math.hypot(a.x-cx,a.y-cy), s0=Math.atan2(a.y-cy,a.x-cx);
     const n=Math.max(4,Math.ceil(Math.abs(th)/(Math.PI/90))), o=[]; for(let i=1;i<=n;i++){const an=s0+th*i/n; o.push(ap(m,{x:cx+r*Math.cos(an),y:cy+r*Math.sin(an)}));} o[o.length-1]=ap(m,c); return o; };
   const colOf=(e,layer,parentCol)=>{ const ci=e.colorIndex; if(ci===0) return parentCol??7; if(ci==null||ci===256){ const L=layerTab.get(layer); return L?L.colorIndex:7; } return ci; };
-  const push=(layer,col,pts,closed)=>{ if(pts.length<2) return; items.push({k:'p',layer,col,pts,closed}); used.set(layer,(used.get(layer)||0)+1); verts.push([pts[0],layer],[pts[pts.length-1],layer]); };
+  const arcs=[], segs=[]; let inDim=false;
+  const push=(layer,col,pts,closed)=>{ if(pts.length<2) return; items.push({k:'p',layer,col,pts,closed,dim:inDim||undefined}); used.set(layer,(used.get(layer)||0)+1); verts.push([pts[0],layer],[pts[pts.length-1],layer]); };
   const walk=(ents,m,depth,pLayer,pCol)=>{ for(const e of ents||[]){ if(e.isVisible===false) continue;
       const layer=(e.layer==='0'&&pLayer)?pLayer:(e.layer||'0'); const col=colOf(e,layer,pCol);
       try{ switch(e.type){
-        case 'LINE': push(layer,col,[ap(m,e.startPoint),ap(m,e.endPoint)],false); break;
-        case 'CIRCLE': { const pts=arc(m,e.center,e.radius,0,2*Math.PI); push(layer,col,pts,true); const c=ap(m,e.center); const ci={x:c[0],y:c[1],r:e.radius*m.s,layer}; circles.push(ci); items[items.length-1].circ=ci; verts.push([c,layer]); break; }
-        case 'ARC': push(layer,col,arc(m,e.center,e.radius,e.startAngle,e.endAngle),false); verts.push([ap(m,e.center),layer]); break;
-        case 'LWPOLYLINE': case 'POLYLINE2D': { const vs=e.vertices||[]; if(vs.length<2) break; const closed=(e.flag&1)===1||(e.flag&512)===512; const out=[ap(m,vs[0])], n=closed?vs.length:vs.length-1; for(let k=0;k<n;k++) out.push(...bul(m,vs[k],vs[(k+1)%vs.length],vs[k].bulge||0)); push(layer,col,out,closed); vs.forEach(v=>verts.push([ap(m,v),layer])); break; }
+        case 'LINE': { const a=ap(m,e.startPoint), b=ap(m,e.endPoint); push(layer,col,[a,b],false); if(!inDim) segs.push([a,b,layer]); break; }
+        case 'CIRCLE': { const pts=arc(m,e.center,e.radius,0,2*Math.PI); push(layer,col,pts,true); const c=ap(m,e.center); const ci={x:c[0],y:c[1],r:e.radius*m.s,layer}; if(!inDim) circles.push(ci); items[items.length-1].circ=ci; verts.push([c,layer]); break; }
+        case 'ARC': { const pts=arc(m,e.center,e.radius,e.startAngle,e.endAngle); push(layer,col,pts,false); const c=ap(m,e.center); verts.push([c,layer]); if(!inDim) arcs.push({x:c[0],y:c[1],r:e.radius*m.s,mid:pts[Math.floor(pts.length/2)],layer}); break; }
+        case 'LWPOLYLINE': case 'POLYLINE2D': { const vs=e.vertices||[]; if(vs.length<2) break; const closed=(e.flag&1)===1||(e.flag&512)===512; const out=[ap(m,vs[0])], n=closed?vs.length:vs.length-1; for(let k=0;k<n;k++) out.push(...bul(m,vs[k],vs[(k+1)%vs.length],vs[k].bulge||0)); push(layer,col,out,closed); vs.forEach(v=>verts.push([ap(m,v),layer])); if(!inDim){ const n2=closed?vs.length:vs.length-1; for(let k=0;k<n2;k++){ const v0=vs[k], v1=vs[(k+1)%vs.length]; if(!v0.bulge) segs.push([ap(m,v0),ap(m,v1),layer]); else { const dx=v1.x-v0.x, dy=v1.y-v0.y, ch=Math.hypot(dx,dy), th=4*Math.atan(v0.bulge), r=Math.abs(ch/(2*Math.sin(th/2))); const k2=(1-v0.bulge*v0.bulge)/(4*v0.bulge); const c=ap(m,{x:(v0.x+v1.x)/2-dy*k2,y:(v0.y+v1.y)/2+dx*k2}); const sub=bul(m,v0,v1,v0.bulge); if(Math.abs(th)<Math.PI*1.9) arcs.push({x:c[0],y:c[1],r:r*m.s,mid:sub[Math.floor(sub.length/2)],layer}); } } } break; }
         case 'ELLIPSE': { const c=e.center, M=e.majorAxisEndPoint, rr=e.axisRatio; let t0=e.startAngle||0, t1=e.endAngle||2*Math.PI; if(t1<=t0) t1+=2*Math.PI; const n=Math.max(48,Math.ceil((t1-t0)/(Math.PI/90))), o=[];
           for(let i=0;i<=n;i++){const t=t0+(t1-t0)*i/n; o.push(ap(m,{x:c.x+M.x*Math.cos(t)-M.y*rr*Math.sin(t), y:c.y+M.y*Math.cos(t)+M.x*rr*Math.sin(t)}));} push(layer,col,o,false); break; }
         case 'SPLINE': { const pts=(e.fitPoints&&e.fitPoints.length>1)?e.fitPoints:e.controlPoints; if(pts&&pts.length>1) push(layer,col,pts.map(q=>ap(m,q)),false); break; }
@@ -416,19 +417,19 @@ function make2D(db){
           const mm={a:m.a*l.a+m.c*l.b, b:m.b*l.a+m.d*l.b, c:m.a*l.c+m.c*l.d, d:m.b*l.c+m.d*l.d, e:m.a*l.e+m.c*l.f+m.e, f:m.b*l.e+m.d*l.f+m.f, s:m.s*Math.sqrt(Math.abs(sx*sy)), rot:m.rot+ro};
           const cols=Math.max(1,e.columnCount||1), rows=Math.max(1,e.rowCount||1);
           for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){ const ox=c*(e.columnSpacing||0), oy=r*(e.rowSpacing||0); const dx=co*ox-si*oy, dy=si*ox+co*oy;
-            walk(blk.entities,{...mm,e:mm.e+m.a*dx+m.c*dy,f:mm.f+m.b*dx+m.d*dy},depth+1,layer,col); }
+            { const was=inDim; if(e.type==='DIMENSION') inDim=true; walk(blk.entities,{...mm,e:mm.e+m.a*dx+m.c*dy,f:mm.f+m.b*dx+m.d*dy},depth+1,layer,col); inDim=was; } }
           break; }
       } }catch(err){ console.warn('skip',e.type,err); } } };
   walk(db.entities,ID,0,null,null);
   const layerDefs=[...used.keys()].map(n=>{ const L=layerTab.get(n); return {name:n,col:L?L.colorIndex:7,on:!(L&&(L.off||L.frozen))}; });
   const u=db.header&&db.header.INSUNITS; const unit={1:'inch',2:'feet',4:'mm',5:'cm',6:'m'}[u]||'mm';
-  return finish2D(items,circles,verts,layerDefs,unit);
+  const d2=finish2D(items,circles,verts,layerDefs,unit); d2.arcs=arcs; d2.segs=segs; return d2;
 }
 function finish2D(items,circles,verts,layerDefs,unit){
   if(!items.length) throw new Error('도면에서 그릴 요소를 찾지 못했습니다');
   const cnt=new Map(); for(const it of items) cnt.set(it.layer,(cnt.get(it.layer)||0)+1);
   const layers=layerDefs.filter(l=>cnt.has(l.name)).map(l=>({...l,count:cnt.get(l.name)})).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
-  const d={kind:'2d',items,circles,verts,layers,unit,view:null,measure:false,calib:false,mpts:[],hover:null};
+  const d={kind:'2d',items,circles,verts,layers,unit,arcs:[],segs:[],view:null,measure:false,calib:false,mpts:[],hover:null};
   extents2D(d); d.enter=()=>enter2D(d); d.leave=()=>{}; return d;
 }
 function extents2D(d){
@@ -465,12 +466,14 @@ function draw2D(d){
 function enter2D(d){
   $('cv2').hidden=false; draw2D(d);
   const [x0,y0,x1,y1]=d.gext;
-  $('tb').innerHTML=`<button id="fitB">화면 맞춤</button><button id="m2B" aria-pressed="${d.measure&&!d.calib}">거리 재기</button><button id="calB" aria-pressed="${d.calib}" title="두 점을 찍고 실제 길이를 넣으면 도면 전체 크기를 맞춥니다">축척 맞추기</button><button id="dxfB">DXF 저장</button>`;
+  $('tb').innerHTML=`<button id="fitB">화면 맞춤</button><button id="m2B" aria-pressed="${d.measure&&!d.calib}">거리 재기</button><button id="calB" aria-pressed="${d.calib}" title="두 점을 찍고 실제 길이를 넣으면 도면 전체 크기를 맞춥니다">축척 맞추기</button><select id="adM" title="자동 치수 방식" style="font:inherit;border:1px solid var(--line);border-radius:7px;padding:6px;background:rgba(255,255,255,.92)"><option value="part" ${d.adMode!=='asm'?'selected':''}>단품: 가공 포인트</option><option value="asm" ${d.adMode==='asm'?'selected':''}>완제품: 취부홀·외곽 기준</option></select><button id="adB" title="화면에 보이는 부품에 치수를 붙입니다">자동 치수</button><button id="adX">자동 치수 지우기</button><button id="dxfB">DXF 저장</button>`;
   $('tb').onclick=e=>{ const b=e.target.closest('button'); if(!b) return;
     if(b.id==='fitB'){ fit2D(d); draw2D(d); }
     if(b.id==='m2B'){ const on=!(d.measure&&!d.calib); d.measure=on; d.calib=false; d.mpts=[]; enter2D(d); }
     if(b.id==='calB'){ d.calib=!d.calib; d.measure=d.calib; d.mpts=[]; enter2D(d); }
-    if(b.id==='dxfB') saveDXF(d); };
+    if(b.id==='dxfB') saveDXF(d);
+    if(b.id==='adB'){ d.adMode=$('adM').value; autoDim(d); }
+    if(b.id==='adX'){ clearAutoDim(d); enter2D(d); } };
   const holes=summarizeHoles(d.circles);
   $('side').innerHTML=`<h3>외형 치수 (${d.unit})</h3>
     <table class="kv"><tr><td>가로</td><td>${f2(x1-x0)}</td></tr><tr><td>세로</td><td>${f2(y1-y0)}</td></tr><tr><td>원점 기준</td><td>X ${f2(x0)} ~ ${f2(x1)}<br>Y ${f2(y0)} ~ ${f2(y1)}</td></tr></table>
@@ -487,7 +490,7 @@ function enter2D(d){
   hint2(d); upMeas2(d);
 }
 function summarizeHoles(cs){ const m=new Map(); for(const c of cs){ const k=(Math.round(c.r*2*100)/100).toFixed(2); m.set(k,(m.get(k)||0)+1); } return [...m].map(([d,n])=>({d:+d,n})).sort((a,b)=>a.d-b.d); }
-function hint2(d){ $('hint').hidden=false; if(d.calib){ $('hint').textContent='축척 맞추기: 길이를 아는 두 점(치수선 끝 등)을 차례로 클릭하세요'; return; } $('hint').textContent=d.measure?'두 점을 클릭하면 거리를 잽니다 (끝점·원 중심에 붙음) · 세 번째 클릭은 새로 시작':'끌기: 이동 · 휠: 확대/축소 · 원에 마우스를 올리면 지름 표시'; }
+function hint2(d){ $('hint').hidden=false; if(!d.measure&&!d.calib){ $('hint').textContent='끌기: 이동 · 휠: 확대/축소 · 자동 치수는 화면에 보이는 부품 기준 (도면틀은 화면 밖으로)'; return; } if(d.calib){ $('hint').textContent='축척 맞추기: 길이를 아는 두 점(치수선 끝 등)을 차례로 클릭하세요'; return; } $('hint').textContent=d.measure?'두 점을 클릭하면 거리를 잽니다 (끝점·원 중심에 붙음) · 세 번째 클릭은 새로 시작':'끌기: 이동 · 휠: 확대/축소 · 원에 마우스를 올리면 지름 표시'; }
 function upMeas2(d){ const m=$('meas'); if(!m) return; if(d.mpts.length===2){ const [a,b]=d.mpts; const dx=b[0]-a[0], dy=b[1]-a[1];
     m.innerHTML=`거리 <b>${f2(Math.hypot(dx,dy))}</b> ${d.unit}<br>가로 ${f2(Math.abs(dx))} · 세로 ${f2(Math.abs(dy))} · 각도 ${f2(Math.atan2(dy,dx)*180/Math.PI)}°`; }
   else if(d.measure) m.textContent=d.mpts.length?'두 번째 점을 클릭하세요.':'첫 번째 점을 클릭하세요.'; }
@@ -519,7 +522,7 @@ function calibrate(d){
   const k=real/cur, ox=d.gext[0], oy=d.gext[1]; const T=p=>[(p[0]-ox)*k,(p[1]-oy)*k];
   for(const it of d.items){ if(it.k==='t'){ [it.x,it.y]=T([it.x,it.y]); it.h*=k; } else it.pts=it.pts.map(T); }
   const seen=new Set(); for(const c of d.circles){ if(seen.has(c)) continue; seen.add(c); [c.x,c.y]=T([c.x,c.y]); c.r*=k; }
-  d.verts=d.verts.map(([p,l])=>[T(p),l]); d.unit='mm'; d.scaled=(d.scaled||1)*k; d.calib=false; d.measure=false; d.mpts=[];
+  d.verts=d.verts.map(([p,l])=>[T(p),l]); d.arcs=(d.arcs||[]).map(a=>({...a,x:T([a.x,a.y])[0],y:T([a.x,a.y])[1],r:a.r*k,mid:T(a.mid)})); d.segs=(d.segs||[]).map(([a,b,l])=>[T(a),T(b),l]); d.unit='mm'; d.scaled=(d.scaled||1)*k; d.calib=false; d.measure=false; d.mpts=[];
   extents2D(d); fit2D(d); enter2D(d); toast(`축척을 맞췄습니다 (×${(Math.round(k*10000)/10000)}). 왼쪽 아래가 원점(0,0)입니다.`);
 }
 // nearest AutoCAD colour for a css hex
@@ -529,7 +532,9 @@ function cssToAci(css){ if(!css||css[0]!=='#') return 7; const h=css.length===4?
 function saveDXF(d){
   const on=new Map(d.layers.map(l=>[l.name,l.on])); const n=v=>(Math.round(v*1e6)/1e6).toString(); const L=[];
   const out=(...a)=>{ for(let i=0;i<a.length;i+=2) L.push(String(a[i]),String(a[i+1])); };
-  const lname=s=>String(s).replace(/[<>\/\\":;?*|=`]/g,'_')||'0';
+  const lname=s=>enc(String(s).replace(/[<>\/\\":;?*|=`]/g,'_'))||'0';
+  // R12 DXF is read as ANSI: use %%c/%%d/%%p for Ø ° ± and \U+XXXX for other non-ASCII (Korean etc.)
+  const enc=t=>String(t).replace(/[Øø⌀]/g,'%%c').replace(/°/g,'%%d').replace(/±/g,'%%p').replace(/[^\x00-\x7f]/g,c=>'\\U+'+c.codePointAt(0).toString(16).toUpperCase().padStart(4,'0'));
   out(0,'SECTION',2,'HEADER',9,'$ACADVER',1,'AC1009',9,'$INSUNITS',70,4,0,'ENDSEC');
   out(0,'SECTION',2,'TABLES',0,'TABLE',2,'LAYER',70,d.layers.length);
   for(const l of d.layers) out(0,'LAYER',2,lname(l.name),70,0,62,l.css?cssToAci(l.css):(l.col||7),6,'CONTINUOUS');
@@ -537,7 +542,7 @@ function saveDXF(d){
   let cnt=0;
   for(const it of d.items){ if(!on.get(it.layer)) continue; const ly=lname(it.layer), col=it.css?cssToAci(it.css):(it.col||7); cnt++;
     if(it.circ){ out(0,'CIRCLE',8,ly,62,col,10,n(it.circ.x),20,n(it.circ.y),30,0,40,n(it.circ.r)); continue; }
-    if(it.k==='t'){ for(const [k,ln] of it.text.split('\n').entries()) out(0,'TEXT',8,ly,62,col,10,n(it.x),20,n(it.y-k*it.h*1.4),30,0,40,n(it.h),1,ln,50,n(it.rot*180/Math.PI)); continue; }
+    if(it.k==='t'){ for(const [k,ln] of it.text.split('\n').entries()){ const yy=it.y-k*it.h*1.4; if(it.att===8) out(0,'TEXT',8,ly,62,col,10,n(it.x),20,n(yy),30,0,40,n(it.h),1,enc(ln),50,n(it.rot*180/Math.PI),72,1,11,n(it.x),21,n(yy),31,0); else out(0,'TEXT',8,ly,62,col,10,n(it.x),20,n(yy),30,0,40,n(it.h),1,enc(ln),50,n(it.rot*180/Math.PI)); } continue; }
     const P=it.k==='f'?[...it.pts,it.pts[0]]:it.pts;
     if(P.length===2&&!it.closed){ out(0,'LINE',8,ly,62,col,10,n(P[0][0]),20,n(P[0][1]),30,0,11,n(P[1][0]),21,n(P[1][1]),31,0); continue; }
     out(0,'POLYLINE',8,ly,62,col,66,1,10,0,20,0,30,0,70,it.closed?1:0); for(const q of P) out(0,'VERTEX',8,ly,10,n(q[0]),20,n(q[1]),30,0); out(0,'SEQEND',8,ly); }
@@ -593,7 +598,63 @@ async function pdfToDrawing(d,pageNo){
     items.push({k:'t',layer:'문자',col:7,x:(m[4]-vb[0])*PT,y:(m[5]-vb[1])*PT,h:h*PT*0.8,rot:Math.atan2(m[1],m[0]),text:t.str,att:7}); layers.set('문자',null); }
   if(!items.some(it=>it.k==='p')) throw new Error('이 쪽에는 선 정보가 없습니다 (스캔한 그림 PDF로 보입니다)');
   const defs=[...layers].map(([name,css])=>({name,col:7,css,on:true}));
-  const dd=finish2D(items,circles,verts,defs,'mm'); dd.fromPdf=true; return dd;
+  const dd=finish2D(items,circles,verts,defs,'mm'); dd.fromPdf=true;
+  for(const it of items) if(it.k==='p'&&!it.circ){ const P=it.pts; const n=it.closed?P.length:P.length-1; for(let k=0;k<n;k++) dd.segs.push([P[k],P[(k+1)%P.length],it.layer]); }
+  return dd;
+}
+const AD='DIM-AUTO';
+function clearAutoDim(d){ d.items=d.items.filter(it=>it.layer!==AD); d.layers=d.layers.filter(l=>l.name!==AD); }
+const fmtN=v=>(+(+v).toFixed(2)).toString();
+function autoDim(d){
+  clearAutoDim(d);
+  const r=stage.getBoundingClientRect(); const [vx0,vy1]=S2W(d,0,0), [vx1,vy0]=S2W(d,r.width,r.height);
+  const inV=(p)=>p[0]>=vx0&&p[0]<=vx1&&p[1]>=vy0&&p[1]<=vy1;
+  const on=new Map(d.layers.map(l=>[l.name,l.on]));
+  const geo=d.items.filter(it=>it.k==='p'&&!it.dim&&on.get(it.layer)&&it.pts.every(inV));
+  if(!geo.length){ toast('화면 안에 온전히 보이는 부품 선이 없습니다. 치수를 붙일 부품을 확대해서 화면에 맞춘 뒤 누르세요.'); return; }
+  let x0=1e18,y0=1e18,x1=-1e18,y1=-1e18; for(const it of geo) for(const p of it.pts){ if(p[0]<x0)x0=p[0]; if(p[0]>x1)x1=p[0]; if(p[1]<y0)y0=p[1]; if(p[1]>y1)y1=p[1]; }
+  const W=x1-x0, H=y1-y0; if(W<=0&&H<=0) return;
+  const h=Math.max(W,H)*0.022, gap=h*0.6, ar=h*0.9; const out=[];
+  const L=(pts)=>out.push({k:'p',layer:AD,col:4,pts,closed:false});
+  const T=(x,y,text,rot=0,att=8)=>out.push({k:'t',layer:AD,col:4,x,y,h,rot,text,att});
+  const arrow=(p,dir)=>{ const [ux,uy]=dir, a=0.35; L([[p[0]+ar*(ux*Math.cos(a)-uy*Math.sin(a)),p[1]+ar*(ux*Math.sin(a)+uy*Math.cos(a))],p,[p[0]+ar*(ux*Math.cos(-a)-uy*Math.sin(-a)),p[1]+ar*(ux*Math.sin(-a)+uy*Math.cos(-a))]]); };
+  // linear dimension between a and b, measured along axis ('x' or 'y'), dimension line at offset position `at`
+  const dimLin=(a,b,axis,at)=>{ if(axis==='x'){ const len=Math.abs(b-a); if(len<1e-6) return; L([[a,at.from],[a,at.pos+(at.pos>at.from?gap:-gap)]]); L([[b,at.from2??at.from],[b,at.pos+(at.pos>at.from?gap:-gap)]]); L([[a,at.pos],[b,at.pos]]); arrow([a,at.pos],[Math.sign(b-a),0]); arrow([b,at.pos],[Math.sign(a-b),0]); T((a+b)/2,at.pos+h*0.25,fmtN(len)); }
+    else { const len=Math.abs(b-a); if(len<1e-6) return; L([[at.from,a],[at.pos+(at.pos>at.from?gap:-gap),a]]); L([[at.from,b],[at.pos+(at.pos>at.from?gap:-gap),b]]); L([[at.pos,a],[at.pos,b]]); arrow([at.pos,a],[0,Math.sign(b-a)]); arrow([at.pos,b],[0,Math.sign(a-b)]); T(at.pos-h*0.25,(a+b)/2,fmtN(len),Math.PI/2); } };
+  // 1) overall size: below and left
+  dimLin(x0,x1,'x',{from:y0-gap,pos:y0-h*5});
+  dimLin(y0,y1,'y',{from:x0-gap,pos:x0-h*5});
+  // 2) holes inside the part
+  const holes=d.circles.filter(c=>on.get(c.layer)&&c.x>=x0-1e-6&&c.x<=x1+1e-6&&c.y>=y0-1e-6&&c.y<=y1+1e-6&&c.r*2<Math.min(W,H)*0.9);
+  // hole positions as chain dimensions along the top (X) and the right (Y)
+  const uniq=(vals)=>{ const s=[...vals].sort((a,b)=>a-b), o=[]; for(const v of s) if(!o.length||Math.abs(v-o[o.length-1])>Math.max(W,H)*1e-4) o.push(v); return o; };
+  if(holes.length){
+    if(d.adMode==='asm'){ // finished product: every mounting hole measured from the outline edge (bottom-left), stacked
+      const xs=uniq(holes.map(c=>c.x)).filter(v=>v-x0>1e-6); xs.forEach((v,i)=>dimLin(x0,v,'x',{from:y1+gap,pos:y1+h*(2.6+i*2.2)}));
+      const ys=uniq(holes.map(c=>c.y)).filter(v=>v-y0>1e-6); ys.forEach((v,i)=>dimLin(y0,v,'y',{from:x1+gap,pos:x1+h*(2.6+i*2.2)})); }
+    else { // single part: chain dimensions between machining points
+      const xs=uniq([x0,...holes.map(c=>c.x),x1]); for(let i=0;i+1<xs.length;i++) dimLin(xs[i],xs[i+1],'x',{from:y1+gap,pos:y1+h*2.6});
+      const ys=uniq([y0,...holes.map(c=>c.y),y1]); for(let i=0;i+1<ys.length;i++) dimLin(ys[i],ys[i+1],'y',{from:x1+gap,pos:x1+h*2.6}); }
+    // diameter callouts, one per size
+    const groups=new Map(); for(const c of holes){ const k=(Math.round(c.r*200)/100).toFixed(2); (groups.get(k)||groups.set(k,[]).get(k)).push(c); }
+    let gi=0; for(const [k,cs] of groups){ const c=cs.reduce((a,b)=>(b.x+b.y<a.x+a.y?b:a)); const ang=Math.PI/4+gi*0.35; gi++;
+      const ex=[c.x+c.r*Math.cos(ang),c.y+c.r*Math.sin(ang)], kn=[c.x+(c.r+h*2.2)*Math.cos(ang),c.y+(c.r+h*2.2)*Math.sin(ang)], tail=[kn[0]+h*1.2,kn[1]];
+      L([ex,kn,tail]); arrow(ex,[Math.cos(ang),Math.sin(ang)]); T(tail[0]+h*0.2,tail[1]+h*0.15,(cs.length>1?cs.length+'X ':'')+'Ø'+fmtN(+k),0,7); } }
+  // 3) fillets (arcs) and chamfers (45° short edges)
+  const part=d.adMode!=='asm';
+  const arcsIn=!part?[]:(d.arcs||[]).filter(a=>on.get(a.layer)&&a.mid[0]>=x0-1e-6&&a.mid[0]<=x1+1e-6&&a.mid[1]>=y0-1e-6&&a.mid[1]<=y1+1e-6&&a.r<Math.min(W,H)*0.5);
+  const rg=new Map(); for(const a of arcsIn){ const k=fmtN(a.r); (rg.get(k)||rg.set(k,[]).get(k)).push(a); }
+  for(const [k,as] of rg){ const a=as[0]; const ux=(a.mid[0]-a.x)/(a.r||1), uy=(a.mid[1]-a.y)/(a.r||1); const kn=[a.mid[0]+ux*h*2.2,a.mid[1]+uy*h*2.2], tail=[kn[0]+(ux>=0?h*1.2:-h*1.2),kn[1]];
+    L([a.mid,kn,tail]); arrow(a.mid,[ux,uy]); T(ux>=0?tail[0]+h*0.2:tail[0]-h*0.2-h*0.6*((as.length>1?3:0)+1+k.length),tail[1]+h*0.15,(as.length>1?as.length+'X ':'')+'R'+k,0,7); }
+  const chams=!part?[]:(d.segs||[]).filter(([p,q,l])=>{ if(!on.get(l)||!inV(p)||!inV(q)) return false; const dx=q[0]-p[0], dy=q[1]-p[1], len=Math.hypot(dx,dy); if(len<=1e-6||len>Math.min(W,H)*0.25) return false;
+      const ang=Math.abs(Math.atan2(dy,dx)*180/Math.PI)%90; return Math.abs(ang-45)<1.5; });
+  const cg=new Map(); for(const [p,q] of chams){ const k=fmtN(Math.abs(q[0]-p[0])); (cg.get(k)||cg.set(k,[]).get(k)).push([p,q]); }
+  for(const [k,cs] of cg){ const [p,q]=cs[0]; const m=[(p[0]+q[0])/2,(p[1]+q[1])/2]; const cx=(x0+x1)/2, cy=(y0+y1)/2; const ux=Math.sign(m[0]-cx)||1, uy=Math.sign(m[1]-cy)||1;
+    const kn=[m[0]+ux*h*1.6,m[1]+uy*h*1.6], tail=[kn[0]+ux*h*1.2,kn[1]]; L([m,kn,tail]); arrow(m,[ux/Math.SQRT2,uy/Math.SQRT2]);
+    T(ux>0?tail[0]+h*0.2:tail[0]-h*0.2-h*0.6*(1+k.length+(cs.length>1?3:0)),tail[1]+h*0.15,(cs.length>1?cs.length+'X ':'')+'C'+k,0,7); }
+  d.items.push(...out); d.layers.push({name:AD,col:4,on:true,count:out.length});
+  enter2D(d);
+  toast(`자동 치수(${part?'단품':'완제품'})를 붙였습니다: 외형 ${fmtN(W)} × ${fmtN(H)}, 홀 ${holes.length}개, 필렛 ${arcsIn.length}곳, 모따기 ${chams.length}곳. [DXF 저장]에 함께 들어갑니다.`);
 }
 window.__sv={get cur(){return cur;},W2S};
 /* ===================== PDF ===================== */
