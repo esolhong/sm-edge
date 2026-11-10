@@ -7782,9 +7782,18 @@ pre.gc .cur .n{color:inherit}
         <option value="pick">직접 지정 (클릭)</option></select>
         <button id="pickBtn" aria-pressed="false">원점 클릭</button></div>
       <p class="note" id="originNote" style="margin-top:6px"></p></section>
+    <section><h2>가공 시작점</h2>
+      <div class="row"><select id="startSel" aria-label="기본 시작 위치">
+        <option value="ll">외곽 좌하단 (기본)</option>
+        <option value="lr">외곽 우하단</option>
+        <option value="ul">외곽 좌상단</option>
+        <option value="ur">외곽 우상단</option></select>
+        <button id="startBtn" aria-pressed="false">시작점 클릭</button></div>
+      <p class="note" style="margin-top:6px">초록 점과 화살표가 윤곽마다 가공 시작 위치와 방향입니다. "시작점 클릭"을 켜고 외곽선을 클릭하면 그 자리에서 시작, 초록 점을 클릭하면 방향이 반대로 바뀝니다. Shift+클릭은 위의 기본 위치로 돌립니다.</p>
+      <div class="row" style="margin-top:6px"><button id="startReset">모든 윤곽 기본 위치로</button></div></section>
   </aside>
   <div class="stage" id="stage"><canvas id="cv"></canvas>
-    <div class="tools" id="tools"><button data-m="toggle" aria-pressed="true">켜기/끄기</button><button data-m="select">선택·이동</button><button data-m="hole">홀 추가</button><button data-m="rect">사각형</button><button data-m="circle">원</button><button data-m="start" title="외곽선 위를 클릭하면 그 윤곽의 가공 시작 위치가 됩니다">시작점</button><button data-m="measure" title="두 점을 클릭해 거리 재기 (모서리·홀 중심에 붙음)">거리 재기</button><button id="gridBtn" aria-pressed="true" title="가공 원점(0,0) 기준 모눈. 확대하면 1mm까지 촘촘해집니다">모눈</button><button id="dimBtn" aria-pressed="true" title="치수 보기: 거버는 외곽 가로·세로, DXF·DWG 도면은 외곽·홀 위치·홀 간격·홀 지름까지">치수 보기</button><button id="v3Btn" aria-pressed="false" title="판재 두께와 공구 깊이를 입체로 보기 (끌어서 돌리기)">입체 보기</button><button id="rotL" title="도면 전체를 반시계 90° 회전">↺ 90°</button><button id="rotR" title="도면 전체를 시계 90° 회전">↻ 90°</button><button id="undoBtn" title="Ctrl+Z">되돌리기</button><span id="modeNote"></span></div>
+    <div class="tools" id="tools"><button data-m="toggle" aria-pressed="true">켜기/끄기</button><button data-m="select">선택·이동</button><button data-m="hole">홀 추가</button><button data-m="rect">사각형</button><button data-m="circle">원</button><button data-m="measure" title="두 점을 클릭해 거리 재기 (모서리·홀 중심에 붙음)">거리 재기</button><button id="gridBtn" aria-pressed="true" title="가공 원점(0,0) 기준 모눈. 확대하면 1mm까지 촘촘해집니다">모눈</button><button id="dimBtn" aria-pressed="true" title="치수 보기: 거버는 외곽 가로·세로, DXF·DWG 도면은 외곽·홀 위치·홀 간격·홀 지름까지">치수 보기</button><button id="v3Btn" aria-pressed="false" title="판재 두께와 공구 깊이를 입체로 보기 (끌어서 돌리기)">입체 보기</button><button id="rotL" title="도면 전체를 반시계 90° 회전">↺ 90°</button><button id="rotR" title="도면 전체를 시계 90° 회전">↻ 90°</button><button id="undoBtn" title="Ctrl+Z">되돌리기</button><span id="modeNote"></span></div>
     <div class="busy" id="busy" hidden>LED 위치 계산 중…</div>
     <div class="sim" id="sim"><button id="simPlay" title="G-code 동작 재생">▶ 시뮬레이션</button><button id="simStop" title="처음으로">■</button>
       <select id="simSpeed" aria-label="재생 속도"><option value="1">1배</option><option value="5">5배</option><option value="20" selected>20배</option><option value="100">100배</option></select>
@@ -8635,7 +8644,7 @@ function makeJob(b){ const p=P(), o=origin(b), toMM=(x,y)=>[(x-o[0])*MM,(y-o[1])
       // start where the user put it (projected onto this path), otherwise at the lower-left-most point
       if(L.start){ let bi=0,bd=1e18,bp=null; for(let i=0;i<q.length;i++){ const a=q[i], c=q[(i+1)%q.length], dx=c[0]-a[0], dy=c[1]-a[1], l2=dx*dx+dy*dy; const k=l2?Math.max(0,Math.min(1,((L.start[0]-a[0])*dx+(L.start[1]-a[1])*dy)/l2)):0; const pr=[a[0]+dx*k,a[1]+dy*k], d=Math.hypot(pr[0]-L.start[0],pr[1]-L.start[1]); if(d<bd){bd=d;bi=i;bp=pr;} }
         const a=q[bi], c=q[(bi+1)%q.length]; let pts; if(Math.hypot(bp[0]-a[0],bp[1]-a[1])<1) pts=q.slice(bi).concat(q.slice(0,bi)); else if(Math.hypot(bp[0]-c[0],bp[1]-c[1])<1){ const j=(bi+1)%q.length; pts=q.slice(j).concat(q.slice(0,j)); } else pts=[bp,...q.slice(bi+1),...q.slice(0,bi+1)]; q=pts; }
-      else { let si=0; for(let i=1;i<q.length;i++) if(q[i][0]+q[i][1]<q[si][0]+q[si][1]) si=i; q=q.slice(si).concat(q.slice(0,si)); }
+      else { const sc={ll:[1,1],lr:[-1,1],ul:[1,-1],ur:[-1,-1]}[$('startSel').value]||[1,1], f=v=>sc[0]*v[0]+sc[1]*v[1]; let si=0; for(let i=1;i<q.length;i++) if(f(q[i])<f(q[si])) si=i; q=q.slice(si).concat(q.slice(0,si)); }
       return q.map(([x,y])=>toMM(x,y)); }); };
     const stages=rough?[{paths:mk(fin/MM),passes,kind:'rough'},{paths:mk(0),passes:finPasses,kind:'finish'}]:[{paths:mk(0),passes,kind:'one'}];
     for(const [dx,dy] of offs) for(const st of stages) for(const q of st.paths){ const m=q.map(([x,y])=>[x+dx,y+dy]); cuts.push({loop:L,mm:m,len:perim(m),passes:st.passes,kind:st.kind,tabs:L.side==='out'||L.side==='in'?p.tabs:0}); } }
@@ -8945,8 +8954,8 @@ function moveItem(o,mx,my){ const it=o.it; if(it.pts){ it.pts=o.pts.map(([x,y])=
 function addShape(sh){const b=B(); pushHist(); const L={pts:shapePts(sh),shape:sh,on:true,side:null}; b.loops.push(L); relayout(b); selset=new Set([L]); refresh(); renderEdit(); toast(sh.type==='circle'?`원 D${(sh.r*2*MM).toFixed(1)} 추가`:`사각형 ${(sh.w*MM).toFixed(1)}×${(sh.h*MM).toFixed(1)} 추가`);}
 function addHole(w){const b=B(); pushHist(); const n=(b.holes.filter(h=>h.user).length)+1; const h={x:w[0],y:w[1],ref:'U'+n,user:true,on:true,key:Math.round(w[0])+','+Math.round(w[1])}; b.holes.push(h); selset=new Set([h]); refresh(); renderEdit();}
 function delSel(){const b=B(); if(!selset.size) return; pushHist(); b.loops=b.loops.filter(L=>!selset.has(L)); b.holes=b.holes.filter(h=>!selset.has(h)); const n=selset.size; selset.clear(); relayout(b); refresh(); renderEdit(); toast(`${n}개 삭제했습니다`);}
-function setMode(m){mode=m; picking=false; $('pickBtn').setAttribute('aria-pressed','false'); for(const bt of document.querySelectorAll('#tools button[data-m]')) bt.setAttribute('aria-pressed',bt.dataset.m===m); cv.style.cursor=m==='select'?'default':'crosshair';
-  $('modeNote').textContent={toggle:'클릭: 외곽·홀 가공 켜기/끄기',select:'클릭: 선택 (Shift 추가), 끌기: 이동, 흰 네모 끌기: 크기 조정 (0.1mm 단위), Delete: 삭제',hole:'클릭: 홀 추가, 기존 홀 끌기: 이동 (0.1mm 단위)',rect:'빈 곳 끌기: 사각형 그리기, 선 끌기: 이동, 흰 네모 끌기: 크기 조정. 정확한 치수는 왼쪽 "도면 편집"',circle:'중심에서 끌기: 원 그리기, 선 끌기: 이동, 흰 네모 끌기: 지름 조정',measure:'첫 점을 클릭하세요 (모서리·홀 중심·외곽선에 붙음)',start:'외곽선 위를 클릭: 그 윤곽의 가공 시작 위치. 초록 점을 클릭: 방향 반대로. Shift+클릭: 기본 위치로'}[m]; if(m!=='measure'){meas.a=meas.b=meas.hover=null;} if(m!=='select'){selset.clear(); renderEdit();} draw();}
+function setMode(m){mode=m; picking=false; $('pickBtn').setAttribute('aria-pressed','false'); $('startBtn').setAttribute('aria-pressed',m==='start'); for(const bt of document.querySelectorAll('#tools button[data-m]')) bt.setAttribute('aria-pressed',bt.dataset.m===m); cv.style.cursor=m==='select'?'default':'crosshair';
+  $('modeNote').textContent={toggle:'클릭: 외곽·홀 가공 켜기/끄기',select:'클릭: 선택 (Shift 추가), 끌기: 이동, 흰 네모 끌기: 크기 조정 (0.1mm 단위), Delete: 삭제',hole:'클릭: 홀 추가, 기존 홀 끌기: 이동 (0.1mm 단위)',rect:'빈 곳 끌기: 사각형 그리기, 선 끌기: 이동, 흰 네모 끌기: 크기 조정. 정확한 치수는 왼쪽 "도면 편집"',circle:'중심에서 끌기: 원 그리기, 선 끌기: 이동, 흰 네모 끌기: 지름 조정',measure:'첫 점을 클릭하세요 (모서리·홀 중심·외곽선에 붙음)',start:'외곽선 위를 클릭: 그 윤곽의 가공 시작 위치. 초록 점을 클릭: 방향 반대로. Shift+클릭: 기본 위치로. 왼쪽 "시작점 클릭"을 다시 누르면 끝'}[m]; if(m!=='measure'){meas.a=meas.b=meas.hover=null;} if(m!=='select'){selset.clear(); renderEdit();} draw();}
 document.addEventListener('keydown',e=>{ if(e.target.matches('input,select,textarea')) return; if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault(); undo();} else if(e.key==='Delete'||e.key==='Backspace'){ if(selset.size){e.preventDefault(); delSel();} } else if(e.key==='Escape'){selset.clear(); renderEdit(); draw();} });
 function renderEdit(){const el=$('editBox'), b=B(); if(!b){el.innerHTML='';return;} const o=jobCache?jobCache.o:origin(b), mm=v=>(v*MM).toFixed(2);
   const items=[...selset]; let h='';
@@ -9026,6 +9035,9 @@ $('holeSrc').onchange=()=>{const b=B(); computeHoles(b); refresh();};
 $('holesAll').onclick=()=>{for(const h of B().holes||[]) h.on=true; refresh();};
 $('holesNone').onclick=()=>{for(const h of B().holes||[]) h.on=false; refresh();};
 $('originSel').onchange=()=>{ if($('originSel').value==='pick'&&!B().org){picking=true;$('pickBtn').setAttribute('aria-pressed','true');} refresh(); };
+$('startBtn').onclick=()=>setMode(mode==='start'?'toggle':'start');
+$('startSel').addEventListener('change',()=>refresh());
+$('startReset').onclick=()=>{ const b=B(); if(!b||!b.loops) return; pushHist(); for(const L of b.loops) L.start=null; refresh(); toast('모든 윤곽의 시작점을 기본 위치로 돌렸습니다'); };
 $('pickBtn').onclick=e=>{picking=!picking; e.target.setAttribute('aria-pressed',picking); if(picking) toast('원점으로 쓸 점을 클릭하세요. 홀 중심이나 외곽 꼭짓점에 붙습니다.');};
 
 /* ---------- files ---------- */
@@ -9042,7 +9054,7 @@ $('saveBtn').onclick=async()=>{const b=B(); if(!b||!b._g) return; if(b.isNc){toa
   saveFile(base+'.nc',new Blob([b._g.text],{type:'text/plain'})); };
 $('zipBtn').onclick=async()=>{const b=B(); if(!b||!b._g||b.isNc) return; await saveZip(b,b.name.replace(/[\\/:*?"<>|]/g,'_')+'_'+$('thick').value+'T');};
 /* ---------- CAM project: edits + settings + source, separate from the NC output ---------- */
-const SETTING_IDS=['preset',...PKEYS,'holeSrc','originSel','nx','ny','gx','gy','rectR'];
+const SETTING_IDS=['preset',...PKEYS,'holeSrc','originSel','startSel','nx','ny','gx','gy','rectR'];
 function projectJSON(b){ const st={}; for(const id of SETTING_IDS) if($(id)) st[id]=$(id).value;
   return {app:'일렉트레이너 CNC CAM',version:1,name:b.name,savedAt:new Date().toISOString(),kind:b.isDxf?'drawing':'gerber',ext:b.ext,rotA:b.rotA||0,org:b.org||null,settings:st,
     loops:b.loops.map(L=>({pts:L.pts.map(([x,y])=>[Math.round(x*10)/10,Math.round(y*10)/10]),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,shape:L.shape||null})),
