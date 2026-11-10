@@ -7808,7 +7808,7 @@ pre.gc .cur .n{color:inherit}
         <label for="tool">엔드밀 지름</label><span><input type="number" id="tool" value="2.5" step="0.1"><span class="u">mm</span></span>
         <label for="thick">재료 두께</label><span><input type="number" id="thick" value="8" step="0.5"><span class="u">mm</span></span>
         <label for="over">관통 여유</label><span><input type="number" id="over" value="0.3" step="0.1"><span class="u">mm</span></span>
-        <label for="step">1회 절입</label><span><input type="number" id="step" value="0.8" step="0.1"><span class="u">mm</span></span>
+        <label for="step" title="윤곽을 깎을 때 한 번에 내려가는 깊이. 재료 두께+관통 여유를 이 깊이씩 나눠 깎습니다">절입 깊이</label><span><input type="number" id="step" value="0.8" step="0.1"><span class="u">mm</span></span>
         <label for="feed">이송 속도</label><span><input type="number" id="feed" value="600" step="50"><span class="u">mm/min</span></span>
         <label for="plunge">하강 속도</label><span><input type="number" id="plunge" value="150" step="10"><span class="u">mm/min</span></span>
         <label for="rpm">스핀들</label><span><input type="number" id="rpm" value="18000" step="1000"><span class="u">rpm</span></span>
@@ -7817,8 +7817,7 @@ pre.gc .cur .n{color:inherit}
         <label for="dir">기본 절삭 방향</label><select id="dir"><option value="conv">안쪽 시계 · 바깥 반시계 (상향)</option><option value="climb">안쪽 반시계 · 바깥 시계 (하향)</option></select>
         <label for="drillN" title="엔드밀 지름과 같은 홀을 제자리에서 찍을 때 나눠 내려가는 횟수">홀 드릴 횟수</label><span><input type="number" id="drillN" value="2" step="1" min="1"><span class="u">회</span></span>
         <label for="drillUp" title="드릴 한 번 찍고 칩을 빼려고 올라가는 높이 (재료 윗면 기준)">드릴 후진 높이</label><span><input type="number" id="drillUp" value="2" step="0.5" min="0"><span class="u">mm</span></span>
-        <label for="finAllow" title="황삭+정삭 윤곽의 기본 정삭 두께 (황삭이 측면에 남겨 두는 두께). 윤곽마다 왼쪽 목록에서 따로 정할 수 있습니다">기본 정삭 두께</label><span><input type="number" id="finAllow" value="0.2" step="0.05" min="0"><span class="u">mm</span></span>
-        <label for="finStep" title="정삭 한 번에 내려가는 깊이. 0이면 전체 깊이를 한 번에">정삭 1회 깊이</label><span><input type="number" id="finStep" value="0" step="0.5" min="0"><span class="u">mm · 0=한 번에</span></span>
+        <label for="finAllow" title="황삭+정삭 윤곽의 기본 정삭 두께 (황삭이 측면에 남겨 두는 두께). 윤곽마다 왼쪽 목록에서 따로 정할 수 있습니다">정삭 두께 (측면)</label><span><input type="number" id="finAllow" value="0.2" step="0.05" min="0"><span class="u">mm</span></span>
         <label for="nTabs">고정 브리지 개수</label><span><input type="number" id="nTabs" value="4" step="1" min="0"><span class="u">개/외곽</span></span>
         <label for="tabW">브리지 폭</label><span><input type="number" id="tabW" value="3" step="0.5"><span class="u">mm</span></span>
         <label for="tabH">브리지 높이</label><span><input type="number" id="tabH" value="1" step="0.1"><span class="u">mm</span></span>
@@ -8587,7 +8586,7 @@ function buildDxfBoard(name,text){ const r=parseDXF(text); const layers={outline
 
 /* ---------- job ---------- */
 function B(){return boards[cur];}
-const P=()=>({tool:+$('tool').value,thick:+$('thick').value,over:+$('over').value,step:+$('step').value,feed:+$('feed').value,plunge:+$('plunge').value,rpm:+$('rpm').value,safe:+$('safe').value,dwell:Math.max(0,+$('dwell').value||0),dir:$('dir').value,tabs:Math.max(0,Math.round(+$('nTabs').value||0)),tabW:+$('tabW').value,tabH:+$('tabH').value,holeD:+$('holeD').value,finAllow:Math.max(0,+$('finAllow').value||0),finStep:Math.max(0,+$('finStep').value||0),drillN:Math.max(1,Math.round(+$('drillN').value||1)),drillUp:Math.max(0,+$('drillUp').value||0)});
+const P=()=>({tool:+$('tool').value,thick:+$('thick').value,over:+$('over').value,step:+$('step').value,feed:+$('feed').value,plunge:+$('plunge').value,rpm:+$('rpm').value,safe:+$('safe').value,dwell:Math.max(0,+$('dwell').value||0),dir:$('dir').value,tabs:Math.max(0,Math.round(+$('nTabs').value||0)),tabW:+$('tabW').value,tabH:+$('tabH').value,holeD:+$('holeD').value,finAllow:Math.max(0,+$('finAllow').value||0),finStep:0,drillN:Math.max(1,Math.round(+$('drillN').value||1)),drillUp:Math.max(0,+$('drillUp').value||0)});
 // per-outline machining: direction (auto follows the default cut direction) and rough+finish (inside outlines default to it, outside cut in one go)
 const roughOf=L=>L.side!=='on'&&(L.rough==null?L.side==='in':!!L.rough);
 function prepare(b){
@@ -9014,7 +9013,7 @@ async function select(n){cur=n; selset.clear(); meas.a=meas.b=meas.hover=null; b
   prepare(b); buildLoopsUI(); refresh(); fit();
   if(!b.comps){ $('busy').hidden=false; await new Promise(r=>setTimeout(r,30)); try{ await extract(b); }catch(e){ console.error(e); b.comps=[]; } $('busy').hidden=true; computeHoles(b); if(!b.holes.length&&$('holeSrc').value==='dip2'&&b.comps.some(c=>!c.tht&&c.pads.length===2)){ $('holeSrc').value='smd2'; computeHoles(b); toast('DIP LED가 없어서 SMD 2패드 부품 중심을 홀로 잡았습니다'); } if(B()===b) refresh(); } }
 // diffuser plate: 2T polycarbonate (PC) — keep the feed up so the chips do not melt and weld, 2.5φ holes plunged straight with the 2.5 end mill (홍반장 2026-11-02); bakelite: 3.3φ LED holes by helix
-const BASE={tool:2.5,over:0.3,rpm:18000,dwell:5,safe:10,dir:'conv',nTabs:0,tabW:3,tabH:1,finAllow:0.2,finStep:0,drillN:2,drillUp:2};
+const BASE={tool:2.5,over:0.3,rpm:18000,dwell:5,safe:10,dir:'conv',nTabs:0,tabW:3,tabH:1,finAllow:0.2,drillN:2,drillUp:2};
 const PRESETS={diff2:{...BASE,thick:2,over:0.5,step:2.5,feed:500,plunge:100,holeD:2.5},plate:{...BASE,thick:8,step:2,feed:500,plunge:100,holeD:3.3},etc:{...BASE,thick:5,step:2,feed:500,plunge:100,holeD:3.3}};
 const PKEYS=Object.keys(PRESETS.plate);
 // each job type remembers the last values used with it (this browser only), and the last job type is the start-up choice
@@ -9030,7 +9029,7 @@ $('presetReset').onclick=()=>{const n=$('preset').value; store.set('preset.'+n,n
 applyPreset(store.get('last')||'plate');
 for(const id of ['nx','ny','gx','gy']) $(id).addEventListener('change',()=>{refresh(); fit();});
 $('dir').addEventListener('change',()=>buildLoopsUI()); $('finAllow').addEventListener('change',()=>buildLoopsUI());
-for(const id of ['tool','thick','over','step','feed','plunge','rpm','dwell','safe','dir','nTabs','tabW','tabH','holeD','finAllow','finStep','drillN','drillUp']) $(id).addEventListener('change',()=>{ savePreset(); refresh(); });
+for(const id of ['tool','thick','over','step','feed','plunge','rpm','dwell','safe','dir','nTabs','tabW','tabH','holeD','finAllow','drillN','drillUp']) $(id).addEventListener('change',()=>{ savePreset(); refresh(); });
 $('holeSrc').onchange=()=>{const b=B(); computeHoles(b); refresh();};
 $('holesAll').onclick=()=>{for(const h of B().holes||[]) h.on=true; refresh();};
 $('holesNone').onclick=()=>{for(const h of B().holes||[]) h.on=false; refresh();};
