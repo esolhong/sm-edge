@@ -7659,6 +7659,10 @@ html,body{height:100%}
 body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px}
 header{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px}
 h1{font-size:17px;margin:0;font-weight:600}
+header{position:relative}
+.tnote{text-decoration:none;font-size:13px;font-weight:600;letter-spacing:.08em;color:var(--muted,#6b7a72);white-space:nowrap}
+.tnote:hover{color:var(--accent);text-decoration:underline}
+@media (min-width:760px){.tnote{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}}
 .menu{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto;align-items:center}
 .dd{position:relative}
 .ddm{position:absolute;top:calc(100% + 4px);left:0;z-index:30;min-width:260px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;flex-direction:column}
@@ -7724,6 +7728,7 @@ pre.gc .cur .n{color:inherit}
 </style>
 <header>
   <h1>일렉트레이너 CNC/G-CODE</h1>
+  <a class="tnote" href="https://cafe.naver.com/cadsolutions" target="_blank" rel="noopener" title="네이버 카페 홍반장 기술노트 (새 창)">홍반장 기술노트</a>
   <div class="menu">
     <button id="newBtn" title="빈 도면에서 사각형·원·홀 도구로 직접 그립니다">새로 만들기</button>
     <div class="dd"><button class="ddb" aria-haspopup="true" aria-expanded="false">불러오기 ▾</button>
