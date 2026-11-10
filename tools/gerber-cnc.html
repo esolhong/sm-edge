@@ -7687,6 +7687,10 @@ h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute
 .row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .list{display:flex;flex-direction:column;gap:2px;max-height:220px;overflow:auto}
 .item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-items:center;padding:3px 4px;border-radius:4px;font-size:12.5px}
+.item .sub{grid-column:2/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-1px 0 3px}
+.item .sub[hidden]{display:none}
+.item .sub select{font-size:12px;padding:2px 4px}
+.item .chk{display:flex;gap:4px;align-items:center;font-size:12px;color:var(--muted)}
 .item:hover{background:var(--sel)}
 .item .m{font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
 .params{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 8px;align-items:center;font-size:13px}
@@ -7779,7 +7783,7 @@ pre.gc .cur .n{color:inherit}
       <p class="note" id="originNote" style="margin-top:6px"></p></section>
   </aside>
   <div class="stage" id="stage"><canvas id="cv"></canvas>
-    <div class="tools" id="tools"><button data-m="toggle" aria-pressed="true">켜기/끄기</button><button data-m="select">선택·이동</button><button data-m="hole">홀 추가</button><button data-m="rect">사각형</button><button data-m="circle">원</button><button data-m="measure" title="두 점을 클릭해 거리 재기 (모서리·홀 중심에 붙음)">거리 재기</button><button id="gridBtn" aria-pressed="true" title="가공 원점(0,0) 기준 모눈. 확대하면 1mm까지 촘촘해집니다">모눈</button><button id="dimBtn" aria-pressed="true" title="치수 보기: 거버는 외곽 가로·세로, DXF·DWG 도면은 외곽·홀 위치·홀 간격·홀 지름까지">치수 보기</button><button id="v3Btn" aria-pressed="false" title="판재 두께와 공구 깊이를 입체로 보기 (끌어서 돌리기)">입체 보기</button><button id="rotL" title="도면 전체를 반시계 90° 회전">↺ 90°</button><button id="rotR" title="도면 전체를 시계 90° 회전">↻ 90°</button><button id="undoBtn" title="Ctrl+Z">되돌리기</button><span id="modeNote"></span></div>
+    <div class="tools" id="tools"><button data-m="toggle" aria-pressed="true">켜기/끄기</button><button data-m="select">선택·이동</button><button data-m="hole">홀 추가</button><button data-m="rect">사각형</button><button data-m="circle">원</button><button data-m="start" title="외곽선 위를 클릭하면 그 윤곽의 가공 시작 위치가 됩니다">시작점</button><button data-m="measure" title="두 점을 클릭해 거리 재기 (모서리·홀 중심에 붙음)">거리 재기</button><button id="gridBtn" aria-pressed="true" title="가공 원점(0,0) 기준 모눈. 확대하면 1mm까지 촘촘해집니다">모눈</button><button id="dimBtn" aria-pressed="true" title="치수 보기: 거버는 외곽 가로·세로, DXF·DWG 도면은 외곽·홀 위치·홀 간격·홀 지름까지">치수 보기</button><button id="v3Btn" aria-pressed="false" title="판재 두께와 공구 깊이를 입체로 보기 (끌어서 돌리기)">입체 보기</button><button id="rotL" title="도면 전체를 반시계 90° 회전">↺ 90°</button><button id="rotR" title="도면 전체를 시계 90° 회전">↻ 90°</button><button id="undoBtn" title="Ctrl+Z">되돌리기</button><span id="modeNote"></span></div>
     <div class="busy" id="busy" hidden>LED 위치 계산 중…</div>
     <div class="sim" id="sim"><button id="simPlay" title="G-code 동작 재생">▶ 시뮬레이션</button><button id="simStop" title="처음으로">■</button>
       <select id="simSpeed" aria-label="재생 속도"><option value="1">1배</option><option value="5">5배</option><option value="20" selected>20배</option><option value="100">100배</option></select>
@@ -7800,7 +7804,11 @@ pre.gc .cur .n{color:inherit}
         <label for="rpm">스핀들</label><span><input type="number" id="rpm" value="18000" step="1000"><span class="u">rpm</span></span>
         <label for="dwell">스핀들 대기</label><span><input type="number" id="dwell" value="5" step="1" min="0"><span class="u">초</span></span>
         <label for="safe">안전 높이</label><span><input type="number" id="safe" value="5" step="1"><span class="u">mm</span></span>
-        <label for="dir">절삭 방향</label><select id="dir"><option value="climb">하향 (클라임)</option><option value="conv">상향 (컨벤셔널)</option></select>
+        <label for="dir">기본 절삭 방향</label><select id="dir"><option value="conv">안쪽 시계 · 바깥 반시계 (상향)</option><option value="climb">안쪽 반시계 · 바깥 시계 (하향)</option></select>
+        <label for="drillN" title="엔드밀 지름과 같은 홀을 제자리에서 찍을 때 나눠 내려가는 횟수">홀 드릴 횟수</label><span><input type="number" id="drillN" value="2" step="1" min="1"><span class="u">회</span></span>
+        <label for="drillUp" title="드릴 한 번 찍고 칩을 빼려고 올라가는 높이 (재료 윗면 기준)">드릴 후진 높이</label><span><input type="number" id="drillUp" value="2" step="0.5" min="0"><span class="u">mm</span></span>
+        <label for="finAllow" title="황삭+정삭으로 설정한 윤곽에서 황삭이 남겨 두는 측면 두께">정삭 여유 (측면)</label><span><input type="number" id="finAllow" value="0.2" step="0.05" min="0"><span class="u">mm</span></span>
+        <label for="finStep" title="정삭 한 번에 내려가는 깊이. 0이면 전체 깊이를 한 번에">정삭 1회 깊이</label><span><input type="number" id="finStep" value="0" step="0.5" min="0"><span class="u">mm · 0=한 번에</span></span>
         <label for="nTabs">고정 브리지 개수</label><span><input type="number" id="nTabs" value="4" step="1" min="0"><span class="u">개/외곽</span></span>
         <label for="tabW">브리지 폭</label><span><input type="number" id="tabW" value="3" step="0.5"><span class="u">mm</span></span>
         <label for="tabH">브리지 높이</label><span><input type="number" id="tabH" value="1" step="0.1"><span class="u">mm</span></span>
@@ -7948,25 +7956,32 @@ function mergeLayers(A,B){ if(!A) return B; const off=Math.max(0,...Object.keys(
 
 /* ---------- board model ---------- */
 const boards={}; let cur=null;
+async function loadArchive(name,f){ let u=new Uint8Array(await f.arrayBuffer());
+  if(u[0]===0x50&&u[1]===0x4b){ const zip=await JSZip.loadAsync(u); const files={}; for(const z of Object.values(zip.files)){ if(z.dir) continue; files[z.name]=await z.async('uint8array'); }
+    return isOdb(files)?buildOdb(name,files):buildBoard(name,files); }
+  if(u[0]===0x1f&&u[1]===0x8b) u=await gunzip(u);
+  const files=untar(u); if(!Object.keys(files).length) throw new Error(f.name+' 압축을 풀지 못했습니다');
+  return isOdb(files)?buildOdb(name,files):buildBoard(name,files); }
 async function loadZip(name,bytes){
   const zip=await JSZip.loadAsync(bytes); const files={};
   for(const f of Object.values(zip.files)){ if(f.dir) continue; files[f.name]=await f.async('uint8array'); }
   return buildBoard(name,files);
 }
 function buildBoard(name,files){
-  const layers={}, srcNames={}; let project=null;
+  const layers={}, srcNames={}; let project=null, ipc=null, ipcName='';
   const dec=new TextDecoder('latin1');
   for(const [fn,bytes] of Object.entries(files)){
     if(/pcbviewer\.json$/i.test(fn)){ try{project=JSON.parse(new TextDecoder().decode(bytes));}catch(e){} continue; }
+    if(bytes.length<4e7){ const head=dec.decode(bytes.subarray(0,20000)); if(isIpc356(fn,head)){ const P=parseIpc356(dec.decode(bytes)); if(P.comps.length){ ipc=P; ipcName=fn.split('/').pop(); } continue; } }
     const r=roleOf(fn); if(r==='skip'||r==='dup') continue;
     try{ const L=parseAny(dec.decode(bytes)); if(!L.lines.length&&!Object.keys(L.flashes).length&&!L.regions.length) continue;
       layers[r]=r==='other'?mergeLayers(layers[r],L):(layers[r]&&r==='drill'?mergeLayers(layers[r],L):L); (srcNames[r]=srcNames[r]||[]).push(fn.split('/').pop());
     }catch(e){console.warn('parse fail',fn,e);}
   }
-  if(!Object.keys(layers).length) throw new Error('거버 레이어를 찾지 못했습니다');
+  if(!Object.keys(layers).length){ if(ipc){ const bb=ipcBoard(name,files,ipc); if(project){ bb.comps=project.comps||bb.comps; bb.origin=project.origin||null; bb.originKind=project.originKind||null; bb.originMode=project.originMode||'board'; bb.regions=project.regions||bb.regions; bb.fromProject=true; bb.comps.forEach(finishComp); bb.refPending=rfPendingFrom(files,project); } return bb; } throw new Error('거버 레이어를 찾지 못했습니다'); }
   alignDrill(layers);
-  const b={name,files,layers,srcNames,ext:extentOf(layers),paths:null,comps:null,regions:null,origin:null,originMode:'board'};
-  if(project){ b.comps=project.comps||null; b.origin=project.origin||null; b.originKind=project.originKind||null; b.originMode=project.originMode||'board'; b.regions=project.regions||null; b.fromProject=true; if(b.comps) b.comps.forEach(finishComp); }
+  const b={name,files,layers,srcNames,ext:extentOf(layers),paths:null,comps:null,regions:null,origin:null,originMode:'board',ipc,ipcName};
+  if(project){ b.comps=project.comps||null; b.origin=project.origin||null; b.originKind=project.originKind||null; b.originMode=project.originMode||'board'; b.regions=project.regions||null; b.fromProject=true; if(b.comps) b.comps.forEach(finishComp); b.refPending=rfPendingFrom(files,project); }
   return b;
 }
 function flashPts(L){const out=[]; if(!L) return out; for(const a in L.flashes){const v=L.flashes[a]; for(let i=0;i<v.length;i+=2) out.push([v[i],v[i+1]]);} return out;}
@@ -8160,6 +8175,282 @@ function assignRefs(b,comps){
 }
 const tick=()=>new Promise(r=>setTimeout(r,0));
 
+/* ===================== ODB++ and IPC-D-356 ===================== */
+async function gunzip(u8){ const s=new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip')); return new Uint8Array(await new Response(s).arrayBuffer()); }
+function untar(u8){ const out={}, td=new TextDecoder('latin1'); let p=0, longName=null;
+  while(p+512<=u8.length){ const h=u8.subarray(p,p+512); if(h.every(v=>v===0)) break;
+    const str=(a,b)=>td.decode(h.subarray(a,b)).replace(/\0[\s\S]*$/,'');
+    let name=str(0,100); const prefix=h[257]===0x75?str(345,500):''; const size=parseInt(str(124,136).trim()||'0',8)||0; const type=String.fromCharCode(h[156]);
+    if(prefix) name=prefix+'/'+name;
+    p+=512; const data=u8.subarray(p,p+size); p+=Math.ceil(size/512)*512;
+    if(type==='L'){ longName=td.decode(data).replace(/\0[\s\S]*$/,''); continue; }
+    if(type==='x'){ const m=td.decode(data).match(/\d+ path=([^\n]*)\n/); if(m) longName=m[1]; continue; }
+    if(type==='g') continue;
+    if(longName){ name=longName; longName=null; }
+    if(type==='0'||type==='\0'||type==='7') out[name.replace(/^\.\//,'')]=data.slice();
+  }
+  return out; }
+// Unix "compress" (.Z), which ODB++ uses for big feature files
+function unLZW(u8){
+  if(!u8||u8[0]!==0x1f||u8[1]!==0x9d) return u8;
+  const maxbits=u8[2]&0x1f, block=(u8[2]&0x80)!==0, d=u8.subarray(3), nb=d.length*8, maxmax=1<<maxbits;
+  const pre=new Int32Array(maxmax), suf=new Uint8Array(maxmax), stack=new Uint8Array(maxmax); for(let i=0;i<256;i++) suf[i]=i;
+  let bits=9, pos=0, cnt=0, free=block?257:256, old=-1, fin=0, out=new Uint8Array(d.length*3+1024), o=0;
+  const put=b=>{ if(o>=out.length){ const n=new Uint8Array(out.length*2); n.set(out); out=n; } out[o++]=b; };
+  const align=()=>{ const g=cnt%8; if(g) pos+=(8-g)*bits; cnt=0; };
+  for(;;){
+    if(free>(1<<bits)-1&&bits<maxbits){ align(); bits++; }
+    if(pos+bits>nb) break;
+    let code=0; for(let i=0;i<bits;i++){ const q=pos+i; if(d[q>>3]&(1<<(q&7))) code|=1<<i; } pos+=bits; cnt++;
+    if(old===-1){ old=fin=code; put(code); continue; }
+    if(block&&code===256){ align(); bits=9; free=257; old=-1; continue; }
+    let c=code, sp=0; if(code>=free){ stack[sp++]=fin; c=old; }
+    while(c>=256){ stack[sp++]=suf[c]; c=pre[c]; }
+    fin=c; put(c); while(sp) put(stack[--sp]);
+    if(free<maxmax){ pre[free]=old; suf[free]=fin; free++; }
+    old=code;
+  }
+  return out.slice(0,o); }
+
+const kvBlock=s=>{ const o={}; for(const l of s.split(/\r?\n/)){ const m=l.match(/^\s*([A-Z_0-9]+)\s*=\s*(.*?)\s*$/i); if(m) o[m[1].toUpperCase()]=m[2]; } return o; };
+function odbUnits(text,def){ const m=text.match(/^\s*(?:UNITS\s*=|U\s+)\s*(MM|INCH)\b/mi); return m?m[1].toUpperCase()==='MM':def; }
+// symbol sizes: mils in INCH files, microns in MM files
+function odbSym(n,mm){ const sc=mm?1e4/25.4/1000:10; let m; n=(n||'').toLowerCase();
+  if((m=n.match(/^r([\d.]+)$/))) return ['C',m[1]*sc];
+  if((m=n.match(/^s([\d.]+)$/))) return ['R',m[1]*sc,m[1]*sc];
+  if((m=n.match(/^(?:oval|el)([\d.]+)x([\d.]+)/))){ const w=m[1]*sc,h=m[2]*sc; return w>h?['O',h,-(w-h)/2,0,(w-h)/2,0]:['O',w,0,-(h-w)/2,0,(h-w)/2]; }
+  if((m=n.match(/^(?:rect|di|oct|hex_l|hex_s|bfr|bfs)([\d.]+)x([\d.]+)/))) return ['R',m[1]*sc,m[2]*sc];
+  if((m=n.match(/^(?:donut_r|donut_s|donut_o|thr|ths|s_ths|s_tho|s_thr|sr_ths|moire|hole)([\d.]+)/))) return ['C',m[1]*sc];
+  return ['C',10]; }
+function rotAp(a,q){ if(!(q&1)) return a.slice(); if(a[0]==='R') return ['R',a[2],a[1]]; if(a[0]==='O') return ['O',a[1],-a[3],a[2],-a[5],a[4]]; return a.slice(); }
+function arcPts(x0,y0,x1,y1,cx,cy,cw){ const r=Math.hypot(x0-cx,y0-cy); let a0=Math.atan2(y0-cy,x0-cx), a1=Math.atan2(y1-cy,x1-cx);
+  if(cw){ if(a1>=a0-1e-9) a1-=2*Math.PI; } else { if(a1<=a0+1e-9) a1+=2*Math.PI; }
+  const n=Math.max(4,Math.ceil(Math.abs(a1-a0)*r/50)), out=[]; for(let i=1;i<=n;i++){ const a=a0+(a1-a0)*i/n; out.push([Math.round(cx+r*Math.cos(a)),Math.round(cy+r*Math.sin(a))]); } return out; }
+function odbFeatures(text,defMM){
+  const mm=odbUnits(text,defMM), cs=mm?1e4/25.4:1e4, R=v=>+v*cs;
+  const L=newLayer(), syms=[];
+  const need=(i,q)=>{ const k=10+i*4+q; if(!L.aps[k]) L.aps[k]=rotAp(syms[i]||['C',10],q); return k; };
+  let surfPos=false, poly=null, island=true, px=0, py=0;
+  for(const raw of text.split(/\r?\n/)){ const line=raw.split(';')[0].trim(); if(!line) continue; const t=line.split(/\s+/), c=t[0];
+    if(c[0]==='$'){ const u=(t[2]||'').toUpperCase(); syms[+c.slice(1)]=odbSym(t[1],u==='M'?true:u==='I'?false:mm); continue; }
+    if(c==='L'){ if(t[6]!=='P') continue; addLine(L,need(+t[5],0),R(t[1]),R(t[2]),R(t[3]),R(t[4])); continue; }
+    if(c==='P'){ if(t[4]!=='P') continue; const o=+t[6]||0, ang=(o===8||o===9)?(+t[7]||0):(o%4)*90; addFlash(L,need(+t[3],((Math.round(ang/90)%4)+4)%4),R(t[1]),R(t[2])); continue; }
+    if(c==='A'){ if(t[8]!=='P') continue; const k=need(+t[7],0); let x=R(t[1]),y=R(t[2]); for(const p of arcPts(x,y,R(t[3]),R(t[4]),R(t[5]),R(t[6]),t[10]==='Y')){ addLine(L,k,x,y,p[0],p[1]); x=p[0];y=p[1]; } continue; }
+    if(c==='S'){ surfPos=t[1]==='P'; continue; }
+    if(c==='OB'){ px=R(t[1]); py=R(t[2]); poly=[px,py]; island=(t[3]||'I')!=='H'; continue; }
+    if(c==='OS'&&poly){ px=R(t[1]); py=R(t[2]); poly.push(px,py); continue; }
+    if(c==='OC'&&poly){ for(const p of arcPts(px,py,R(t[1]),R(t[2]),R(t[3]),R(t[4]),t[5]==='Y')) poly.push(p[0],p[1]); px=R(t[1]); py=R(t[2]); continue; }
+    if(c==='OE'){ if(poly&&surfPos&&island&&poly.length>4) L.regions.push(poly); poly=null; continue; }
+    if(c==='SE'){ surfPos=false; poly=null; continue; }
+  }
+  return L; }
+function odbComps(text,side,defMM){ const mm=odbUnits(text,defMM), cs=mm?1e4/25.4:1e4, out=[]; let c=null;
+  for(const raw of text.split(/\r?\n/)){ const line=raw.split(';')[0].trim(); if(!line) continue; const t=line.split(/\s+/);
+    if(t[0]==='CMP'){ const rot=+t[4]||0; c={ref:t[6]||'?',part:t[7]||'',side,rot:Math.round(((360-rot)%360+360)%360*10)/10%360,x:+t[2]*cs,y:+t[3]*cs,pins:[],board:0}; out.push(c); }
+    else if((t[0]==='TOP'||t[0]==='BOT')&&c) c.pins.push([+t[2]*cs,+t[3]*cs]); }
+  return out; }
+function xformLayer(L,T,q){ const X=newLayer(); for(const a in L.aps) X.aps[a]=rotAp(L.aps[a],q);
+  for(const l of L.lines){ const n=[l[0]]; for(let i=1;i<l.length;i+=2){ const p=T(l[i],l[i+1]); n.push(p[0],p[1]); } X.lines.push(n); }
+  for(const a in L.flashes){ const v=L.flashes[a], n=[]; for(let i=0;i<v.length;i+=2){ const p=T(v[i],v[i+1]); n.push(p[0],p[1]); } X.flashes[a]=n; }
+  for(const r of L.regions){ const n=[]; for(let i=0;i<r.length;i+=2){ const p=T(r[i],r[i+1]); n.push(p[0],p[1]); } X.regions.push(n); }
+  return X; }
+function isOdb(files){ return Object.keys(files).some(k=>/(^|\/)matrix\/matrix$/i.test(k.replace(/\\/g,'/'))); }
+function buildOdb(name,files){
+  const lc={}; let root=null, project=null;
+  for(const [fn,by] of Object.entries(files)){ const k=fn.replace(/\\/g,'/').toLowerCase(); lc[k]=by;
+    if(/(^|\/)matrix\/matrix$/.test(k)&&(root===null||k.length-13<root.length)) root=k.slice(0,-13);
+    if(/pcbviewer\.json$/.test(k)){ try{ project=JSON.parse(new TextDecoder().decode(by)); }catch(e){} } }
+  const td=new TextDecoder('latin1');
+  const get=p=>{ p=(root+p).toLowerCase(); let u=lc[p]; if(!u&&lc[p+'.z']) u=unLZW(lc[p+'.z']); return u?td.decode(u):null; };
+  const mx=get('matrix/matrix'); if(!mx) throw new Error('ODB++ matrix 파일이 없습니다');
+  const defMM=odbUnits(get('misc/info')||'',false);
+  const steps=[...mx.matchAll(/STEP\s*\{([^}]*)\}/g)].map(m=>kvBlock(m[1]).NAME).filter(Boolean).map(s=>s.toLowerCase());
+  const lays=[...mx.matchAll(/LAYER\s*\{([^}]*)\}/g)].map(m=>kvBlock(m[1])).filter(l=>l.NAME).sort((a,b)=>(+a.ROW)-(+b.ROW));
+  const board=lays.filter(l=>(l.CONTEXT||'BOARD').toUpperCase()==='BOARD');
+  const sig=board.filter(l=>/^(SIGNAL|POWER_GROUND|MIXED)$/i.test(l.TYPE||'')).map(l=>+l.ROW);
+  const s0=sig.length?Math.min(...sig):0, s1=sig.length?Math.max(...sig):1e9, mid=(s0+s1)/2;
+  const roles={}, srcNames={};
+  for(const l of lays){ const ty=(l.TYPE||'').toUpperCase(), row=+l.ROW, top=row<=mid, nm=l.NAME.toLowerCase(); let r=null;
+    if(/^comp_\+_top$/.test(nm)||(ty==='COMPONENT'&&top)) r='comp_top'; else if(/^comp_\+_bot$/.test(nm)||ty==='COMPONENT') r='comp_bot';
+    else if((l.CONTEXT||'BOARD').toUpperCase()!=='BOARD') r=null;
+    else if(/^(SIGNAL|POWER_GROUND|MIXED)$/.test(ty)) r=row===s0?'top_cu':row===s1?'bot_cu':null;
+    else if(ty==='SOLDER_MASK') r=top?'top_mask':'bot_mask'; else if(ty==='SILK_SCREEN') r=top?'top_silk':'bot_silk';
+    else if(ty==='SOLDER_PASTE') r=top?'top_paste':'bot_paste'; else if(ty==='DRILL') r='drill'; else if(ty==='ROUT') r='outline';
+    if(r){ roles[nm]=r; if(!r.startsWith('comp_')) (srcNames[r]=srcNames[r]||[]).push(l.NAME); } }
+  const hdrs={}; const hdrOf=s=>{ if(hdrs[s]) return hdrs[s]; const t=get(`steps/${s}/stephdr`)||''; const mm=odbUnits(t,defMM), k=mm?1e4/25.4:1e4;
+    const top=kvBlock(t.replace(/STEP-REPEAT\s*\{[^}]*\}/g,'')); return hdrs[s]={k,dx:(+top.X_DATUM||0)*k,dy:(+top.Y_DATUM||0)*k,reps:[...t.matchAll(/STEP-REPEAT\s*\{([^}]*)\}/g)].map(m=>kvBlock(m[1]))}; };
+  const used=new Set(); for(const s of steps) for(const r of hdrOf(s).reps) if(r.NAME) used.add(r.NAME.toLowerCase());
+  const cache={};
+  const step=(s,depth)=>{ if(cache[s]) return cache[s]; if(depth>6) return null;
+    const out={layers:{},comps:[],boards:[]};
+    for(const [nm,role] of Object.entries(roles)){ const base=`steps/${s}/layers/${nm}/`;
+      if(role.startsWith('comp_')){ const t=get(base+'components'); if(t) out.comps.push(...odbComps(t,role==='comp_top'?'TOP':'BOTTOM',defMM)); continue; }
+      const t=get(base+'features'); if(!t) continue; const L=odbFeatures(t,defMM); if(!L.lines.length&&!L.regions.length&&!Object.keys(L.flashes).length) continue;
+      out.layers[role]=out.layers[role]?mergeLayers(out.layers[role],L):L; }
+    const pf=get(`steps/${s}/profile`); let pbox=null;
+    if(pf){ const P=odbFeatures(pf,defMM), O=newLayer(); O.aps[1]=['C',0.15/MM]; for(const r of P.regions) O.lines.push([1,...r,r[0],r[1]]);
+      if(O.lines.length){ pbox=extentOf({o:O}); out.layers.outline=out.layers.outline?mergeLayers(out.layers.outline,O):O; } }
+    const H=hdrOf(s);
+    for(const r of H.reps){ const ch=step((r.NAME||'').toLowerCase(),depth+1); if(!ch) continue; const CH=hdrOf(r.NAME.toLowerCase());
+      const ang=+r.ANGLE||0, mir=/^(YES|Y)$/i.test(r.MIRROR||''), rad=-ang*Math.PI/180, co=Math.cos(rad), si=Math.sin(rad), q=((Math.round((360-ang)/90)%4)+4)%4;
+      for(let i=0;i<(+r.NX||1);i++) for(let j=0;j<(+r.NY||1);j++){
+        const ox=(+r.X+i*(+r.DX||0))*H.k, oy=(+r.Y+j*(+r.DY||0))*H.k;
+        const T=(x,y)=>{ let u=x-CH.dx, v=y-CH.dy; if(mir) u=-u; return [ox+u*co-v*si,oy+u*si+v*co]; };
+        for(const role in ch.layers){ const X=xformLayer(ch.layers[role],T,q); out.layers[role]=out.layers[role]?mergeLayers(out.layers[role],X):X; }
+        const off=out.boards.length;
+        for(const bb of ch.boards){ const a=T(bb[0],bb[1]), b2=T(bb[2],bb[3]); out.boards.push([Math.min(a[0],b2[0]),Math.min(a[1],b2[1]),Math.max(a[0],b2[0]),Math.max(a[1],b2[1])]); }
+        for(const c of ch.comps){ const p=T(c.x,c.y); out.comps.push({...c,x:p[0],y:p[1],board:c.board+off,rot:Math.round(((c.rot+q*90)%360)*10)/10,pins:c.pins.map(pp=>T(pp[0],pp[1]))}); }
+      } }
+    if(!H.reps.length&&(out.comps.length||pbox)) out.boards.push(pbox||extentOf(out.layers));
+    return cache[s]=out; };
+  const roots=steps.filter(s=>!used.has(s)); const top=roots.find(s=>hdrOf(s).reps.length)||roots[0]||steps[0];
+  if(!top) throw new Error('ODB++ step이 없습니다');
+  const S=step(top,0); const layers=S.layers;
+  if(!Object.keys(layers).length) throw new Error('ODB++ 레이어를 찾지 못했습니다');
+  const regions=S.boards.map((g,i)=>({id:i+1,x0:g[0],y0:g[1],x1:g[2],y1:g[3]}));
+  const ixT=flashIndex(layers.top_cu), ixB=flashIndex(layers.bot_cu), ixD=flashIndex(layers.drill);
+  const comps=S.comps.map(c=>{ const own=c.side==='TOP'?ixT:ixB, other=c.side==='TOP'?ixB:ixT;
+    const pads=(c.pins.length?c.pins:[[c.x,c.y]]).map(([x,y])=>{ const h=nearFlash(ixD,x,y,0.3/MM), f=nearFlash(own,x,y,0.4/MM)||(h?nearFlash(other,x,y,0.4/MM):null); const sz=f?apMM(f.ap):[0,0];
+      return [x,y,sz[0],sz[1],h?+(h.ap[1]*MM).toFixed(2):0]; });
+    let bd=c.board+1; if(!regions.some(g=>g.id===bd)){ const g=regions.find(g=>c.x>=g.x0&&c.x<=g.x1&&c.y>=g.y0&&c.y<=g.y1); bd=g?g.id:1; }
+    return {ref:c.ref,part:c.part,refSrc:'odb',how:'odb',side:c.side,rot:c.rot,board:bd,pads}; });
+  comps.forEach(finishComp);
+  const b={name,files,layers,srcNames,ext:extentOf(layers),paths:null,comps:comps.length?comps:null,regions:regions.length?regions:null,origin:null,originMode:'board',fmt:'ODB++ ('+top+')'};
+  if(project){ b.comps=project.comps||b.comps; b.origin=project.origin||null; b.originKind=project.originKind||null; b.originMode=project.originMode||'board'; b.regions=project.regions||b.regions; b.fromProject=true; if(b.comps) b.comps.forEach(finishComp); b.refPending=rfPendingFrom(files,project); }
+  return b; }
+function apMM(a){ const f=v=>+(v*MM).toFixed(2); if(a[0]==='C') return [f(a[1]),f(a[1])]; if(a[0]==='R') return [f(a[1]),f(a[2])];
+  if(a[0]==='O') return [f(a[1]+Math.abs(a[4]-a[2])),f(a[1]+Math.abs(a[5]-a[3]))]; return [f(a[1]||0),f(a[1]||0)]; }
+function flashIndex(L){ const ix=new Map(); if(!L) return ix; const S=200;
+  for(const a in L.flashes){ const v=L.flashes[a]; for(let i=0;i<v.length;i+=2){ const k=Math.round(v[i]/S)+','+Math.round(v[i+1]/S); if(!ix.has(k)) ix.set(k,[]); ix.get(k).push({x:v[i],y:v[i+1],ap:L.aps[a]}); } }
+  return ix; }
+function nearFlash(ix,x,y,tol){ const S=200, cx=Math.round(x/S), cy=Math.round(y/S); let best=null, bd=tol;
+  for(let dx=-1;dx<=1;dx++) for(let dy=-1;dy<=1;dy++) for(const f of ix.get((cx+dx)+','+(cy+dy))||[]){ const d=Math.hypot(f.x-x,f.y-y); if(d<=bd){ bd=d; best=f; } }
+  return best; }
+
+/* IPC-D-356(A) netlist: exact reference designators and pin positions, no copper image */
+function isIpc356(fn,text){ return /^\s*P\s+(UNITS|JOB|CODE)\b/m.test(text)&&/^[03][1-3]7/m.test(text) || (/\.(ipc|356|net)$/i.test(fn)&&/^3[12]7\S*\s/m.test(text)); }
+function parseIpc356(text){
+  const u=text.match(/^P\s+UNITS\s+(CUST|SI)\s*(\d)?/m); const mm=u?(u[1]==='SI'||u[2]==='1'):false;
+  const cs=mm?1e4/25.4/1000:1, sz=mm?v=>+(v/1000).toFixed(3):v=>+(v*0.00254).toFixed(3);
+  const by=new Map(), vias=[]; let n=0;
+  for(const raw of text.split(/\r?\n/)){ if(!/^[03][123]7/.test(raw)) continue; const line=raw.padEnd(80);
+    const ref=line.slice(20,26).trim(), pin=line.slice(27,31).trim(), rest=line.slice(31);
+    const pm=rest.match(/X([+\- ]?\d{1,6})\s*Y([+\- ]?\d{1,6})/); if(!pm) continue;
+    const x=+pm[1].replace(/\s/g,'')*cs, y=+pm[2].replace(/\s/g,'')*cs;
+    const hm=rest.match(/^\s*M?\s*D\s*(\d{1,4})/), am=rest.match(/A(\d\d)/), fm=rest.slice(rest.indexOf(pm[0])+pm[0].length).match(/X\s*(\d{1,4})(?:\s*Y\s*(\d{1,4}))?(?:\s*R\s*(\d{1,3}))?/);
+    const hole=hm&&line.slice(0,3)[1]==='1'?sz(+hm[1]):0, acc=am?+am[1]:0;
+    let w=fm?sz(+fm[1]):0, h=fm?(fm[2]?sz(+fm[2]):w):0; const r=fm&&fm[3]?+fm[3]:0; if(r===90||r===270){ const t=w; w=h; h=t; }
+    if(!w&&hole) w=h=+(hole+0.4).toFixed(2);
+    if(!ref||/^VIA$/i.test(ref)){ vias.push([x,y,w,h,hole]); continue; }
+    if(!by.has(ref)) by.set(ref,{ref,pins:[],acc:new Set()}); const c=by.get(ref); c.pins.push([x,y,w,h,hole,pin]); c.acc.add(acc); n++;
+  }
+  const accs=[...by.values()].flatMap(c=>[...c.acc]).filter(a=>a>0), botAcc=accs.length?Math.max(...accs):2;
+  const comps=[...by.values()].map(c=>{ const tht=c.pins.some(p=>p[4]>0), bot=!tht&&botAcc>1&&[...c.acc].every(a=>a===botAcc);
+    return {ref:c.ref,refSrc:'ipc',how:'ipc',side:bot?'BOTTOM':'TOP',rot:null,board:1,pads:c.pins.map(p=>p.slice(0,5))}; });
+  return {comps,vias,mm,n}; }
+// a board built from the netlist alone: pads as flashes so the parts can be seen and picked
+function ipcBoard(name,files,P){
+  const L={top_cu:newLayer(),bot_cu:newLayer(),drill:newLayer()}, keys=new Map();
+  const ap=(Ly,a)=>{ const s=Ly+a.join(','); if(!keys.has(s)){ keys.set(s,10+keys.size); } const k=keys.get(s); L[Ly].aps[k]=a; return k; };
+  const pad=(p,side)=>{ const w=(p[2]||0.5)/MM, h=(p[3]||p[2]||0.5)/MM, a=p[4]>0&&Math.abs(w-h)<1?['C',w]:['R',w,h];
+    for(const Ly of p[4]>0?['top_cu','bot_cu']:[side==='TOP'?'top_cu':'bot_cu']) addFlash(L[Ly],ap(Ly,a),p[0],p[1]);
+    if(p[4]>0) addFlash(L.drill,ap('drill',['C',p[4]/MM]),p[0],p[1]); };
+  for(const c of P.comps) for(const p of c.pads) pad(p,c.side); for(const v of P.vias) pad(v,'TOP');
+  for(const k of Object.keys(L)) if(!Object.keys(L[k].flashes).length) delete L[k];
+  const ext=extentOf(L), m=1/MM; const comps=P.comps.map(c=>({...c,pads:c.pads.map(p=>p.slice())})); comps.forEach(finishComp);
+  return {name,files,layers:L,srcNames:{top_cu:['IPC-356 패드'],bot_cu:['IPC-356 패드'],drill:['IPC-356 홀']},ext,paths:null,comps,
+    regions:[{id:1,x0:Math.round(ext[0]-m),y0:Math.round(ext[1]-m),x1:Math.round(ext[2]+m),y1:Math.round(ext[3]+m)}],origin:null,originMode:'board',fmt:'IPC-356'}; }
+function bestShift(pts,ref){ if(pts.length<2||ref.length<2) return [0,0,0];
+  const C=30, key=(x,y)=>Math.round(x/C)+','+Math.round(y/C), set=new Set(); for(const [x,y] of ref) for(const dx of [-1,0,1])for(const dy of [-1,0,1]) set.add((Math.round(x/C)+dx)+','+(Math.round(y/C)+dy));
+  const probe=pts.length>400?pts.filter((_,i)=>i%Math.ceil(pts.length/400)===0):pts;
+  const score=(ox,oy,P)=>{ let n=0; for(const [x,y] of P) if(set.has(key(x+ox,y+oy))) n++; return n; };
+  if(score(0,0,probe)>=probe.length*0.8) return [0,0,score(0,0,pts)];
+  let best=[score(0,0,probe),0,0]; const tried=new Set();
+  for(const [sx,sy] of pts.slice(0,4)) for(const [rx,ry] of ref){ const ox=rx-sx, oy=ry-sy, k=Math.round(ox/C)+','+Math.round(oy/C); if(tried.has(k)) continue; tried.add(k); const s=score(ox,oy,probe); if(s>best[0]) best=[s,ox,oy]; }
+  return [best[1],best[2],score(best[1],best[2],pts)]; }
+// put netlist parts on a Gerber board: shift onto the copper pads, then copy to identical array boards the netlist does not cover
+function applyIpc(b){ const P=b.ipc; if(!P||!P.comps.length) return;
+  const pts=P.comps.flatMap(c=>c.pads.map(p=>[p[0],p[1]]));
+  const ref=[...flashPts(b.layers.top_cu),...flashPts(b.layers.bot_cu)];
+  const [ox,oy,hit]=bestShift(pts,ref); b.ipcFit=[hit,pts.length,ox,oy];
+  const R=b.regions||[];
+  const base=P.comps.map(c=>{ const n={...c,pads:c.pads.map(p=>[p[0]+ox,p[1]+oy,p[2],p[3],p[4]])}; finishComp(n);
+    const g=R.find(g=>n.x>=g.x0&&n.x<=g.x1&&n.y>=g.y0&&n.y<=g.y1); n.board=g?g.id:(R[0]?R[0].id:1); return n; });
+  const extra=[], cov=new Set(base.map(c=>c.board));
+  if(copyPitch(b)&&cov.size===1){ const g0=R.find(g=>g.id===[...cov][0]);
+    if(g0) for(const g of R){ if(g.id===g0.id) continue; const dx=g.x0-g0.x0, dy=g.y0-g0.y0;
+      for(const c of base){ const n={...c,board:g.id,pads:c.pads.map(p=>[p[0]+dx,p[1]+dy,p[2],p[3],p[4]])}; finishComp(n); extra.push(n); } } }
+  b.comps=base.concat(extra); }
+
+/* ===================== reference photo / PDF under or over the Gerber, for checking parts ===================== */
+let rfAlign=null; // {step:0..3, pts:[]} : photo point 1, gerber point 1, photo point 2, gerber point 2
+async function rfLoad(file){ const b=B(); if(!b) return; let cv0;
+  try{
+    if(/\.pdf$/i.test(file.name)||file.type==='application/pdf'){ const lib=await pdfLib(); const doc=await lib.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false}).promise;
+      b.rfDoc={doc,name:file.name,n:doc.numPages}; cv0=await rfPdfPage(doc,1); }
+    else { const bm=await createImageBitmap(file); cv0=document.createElement('canvas'); const k=Math.min(1,6000/Math.max(bm.width,bm.height)); cv0.width=Math.round(bm.width*k); cv0.height=Math.round(bm.height*k); cv0.getContext('2d').drawImage(bm,0,0,cv0.width,cv0.height); b.rfDoc=null; }
+  }catch(e){ toast('참조 자료를 열지 못했습니다: '+e.message); return; }
+  b.ref={cv:cv0,name:file.name,page:1,alpha:0.6,above:true,on:true,mirror:false,A:rfFitA(b,cv0)}; rfUI(); draw();
+  toast('참조를 불러왔습니다. "두 점 맞춤"으로 거버와 위치를 맞추세요.'); }
+async function rfPdfPage(doc,n){ const pg=await doc.getPage(n); const v0=pg.getViewport({scale:1}); const sc=Math.min(6,5000/Math.max(v0.width,v0.height)); const vp=pg.getViewport({scale:sc});
+  const c=document.createElement('canvas'); c.width=Math.round(vp.width); c.height=Math.round(vp.height); const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); await pg.render({canvasContext:x,viewport:vp}).promise; return c; }
+function rfFitA(b,c){ const [x0,y0,x1,y1]=b.ext, k=Math.min((x1-x0)/c.width,(y1-y0)/c.height), ox=(x0+x1)/2-c.width*k/2, oy=(y0+y1)/2+c.height*k/2; return [k,0,0,-k,ox,oy]; }
+const rfToWorld=(A,u,v)=>[A[0]*u+A[2]*v+A[4],A[1]*u+A[3]*v+A[5]];
+function rfToImg(A,x,y){ const det=A[0]*A[3]-A[1]*A[2], dx=x-A[4], dy=y-A[5]; return [(A[3]*dx-A[2]*dy)/det,(-A[1]*dx+A[0]*dy)/det]; }
+function drawRef(b,alpha){ const R=b.ref; if(!R||!R.on||!R.cv) return; ctx.save(); ctx.setTransform((flip?-1:1)*view.s,0,0,-view.s,view.tx,view.ty); ctx.transform(...R.A);
+  ctx.globalAlpha=alpha; ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high'; ctx.drawImage(R.cv,0,0); ctx.restore(); }
+function drawRefMarks(b){ if(!rfAlign||!b.ref) return; const dpr=devicePixelRatio; ctx.font=`bold ${12*dpr}px "IBM Plex Mono",monospace`;
+  rfAlign.pts.forEach((p,i)=>{ const w=i%2===0?rfToWorld(b.ref.A,p[0],p[1]):p; const [sx,sy]=toScreen(w[0],w[1]), r=8*dpr; ctx.strokeStyle=i%2===0?'#ff4fd8':'#ffe600'; ctx.lineWidth=2*dpr;
+    ctx.beginPath(); ctx.arc(sx,sy,r,0,7); ctx.moveTo(sx-r*1.8,sy); ctx.lineTo(sx+r*1.8,sy); ctx.moveTo(sx,sy-r*1.8); ctx.lineTo(sx,sy+r*1.8); ctx.stroke(); ctx.fillStyle=ctx.strokeStyle; ctx.fillText((i%2===0?'사진':'거버')+(i<2?'1':'2'),sx+10*dpr,sy-10*dpr); }); }
+function rfClick(sx,sy){ const b=B(), R=b.ref; const st=rfAlign.step;
+  if(st%2===0){ const [wx,wy]=toWorld(sx,sy); rfAlign.pts.push(rfToImg(R.A,wx,wy)); }
+  else { const s=findSnap(sx,sy); rfAlign.pts.push([s.x,s.y]); hoverSnap=null; }
+  rfAlign.step++;
+  if(rfAlign.step===4){ const [p1,q1,p2,q2]=rfAlign.pts, m=R.mirror?-1:1;
+    const P1=[m*p1[0],-p1[1]], P2=[m*p2[0],-p2[1]], dp=[P2[0]-P1[0],P2[1]-P1[1]], dq=[q2[0]-q1[0],q2[1]-q1[1]], den=dp[0]*dp[0]+dp[1]*dp[1];
+    if(den<1){ toast('사진의 두 점이 너무 가깝습니다. 다시 찍어 주세요.'); rfAlign={step:0,pts:[]}; rfUI(); draw(); return; }
+    const sr=(dq[0]*dp[0]+dq[1]*dp[1])/den, si=(dq[1]*dp[0]-dq[0]*dp[1])/den, tx=q1[0]-(sr*P1[0]-si*P1[1]), ty=q1[1]-(si*P1[0]+sr*P1[1]);
+    R.A=[sr*m,si*m,si,-sr,tx,ty]; rfAlign=null; const ang=Math.atan2(si,sr)*180/Math.PI;
+    toast(`위치를 맞췄습니다 (회전 ${ang.toFixed(1)}°, 사진 1px = ${(Math.hypot(sr,si)*MM).toFixed(3)} mm)`); }
+  rfUI(); draw(); }
+function rfMirror(){ const R=B().ref; if(!R) return; const W=R.cv.width, A=R.A; R.A=[-A[0],-A[1],A[2],A[3],A[4]+A[0]*W,A[5]+A[1]*W]; R.mirror=!R.mirror; draw(); rfCrop(); }
+const RF_STEPS=['사진에서 기준점 1을 클릭하세요 (예: 마킹홀, 부품 핀)','거버에서 같은 점 1을 클릭하세요 (노란 표시에 붙습니다)','사진에서 기준점 2를 클릭하세요 (점 1과 멀수록 정확)','거버에서 같은 점 2를 클릭하세요'];
+function rfUI(){ const b=B(), R=b&&b.ref; $('rfCtl').hidden=!R; $('rfLabel').textContent=R?R.name:'';
+  if(!R){ $('rfNote').textContent='불러오기 → "사진 · PDF → 거버에 겹쳐 보기"로 실장 기판 사진을 겹쳐 놓으면, 부품을 클릭할 때 그 자리 사진을 크게 보며 값·마킹을 적을 수 있습니다.'; rfCrop(); return; }
+  $('rfOn').checked=R.on; $('rfAlpha').value=Math.round(R.alpha*100); $('rfAbove').checked=R.above;
+  $('rfPage').hidden=!(b.rfDoc&&b.rfDoc.n>1); if(b.rfDoc&&b.rfDoc.n>1){ $('rfPage').innerHTML=Array.from({length:b.rfDoc.n},(_,i)=>`<option value="${i+1}">${i+1}쪽</option>`).join(''); $('rfPage').value=R.page; }
+  $('rfAlignBtn').setAttribute('aria-pressed',!!rfAlign); $('rfNote').textContent=rfAlign?`${rfAlign.step+1}/4 · ${RF_STEPS[rfAlign.step]}`:'"두 점 맞춤"을 누르고 사진과 거버에서 같은 점을 번갈아 두 번씩 찍으면 크기·회전·위치가 맞춰집니다. 뒷면 사진은 먼저 "좌우 반전".';
+  rfCrop(); }
+// enlarged reference around the selected part, drawn the same way up as the board view
+function rfCrop(){ const box=$('rfBox'), b=B(), R=b&&b.ref, one=sel.size===1?[...sel][0]:null;
+  box.hidden=!(R&&one); if(box.hidden) return;
+  const pad=1.5/MM; let x0=1e12,y0=1e12,x1=-1e12,y1=-1e12; for(const p of one.pads){ const hw=(p[2]||1)/MM/2, hh=(p[3]||1)/MM/2; x0=Math.min(x0,p[0]-hw); x1=Math.max(x1,p[0]+hw); y0=Math.min(y0,p[1]-hh); y1=Math.max(y1,p[1]+hh); }
+  x0-=pad; x1+=pad; y0-=pad; y1+=pad; const w=x1-x0, h=y1-y0, cvs=$('rfCv'), ppw=Math.min(900,Math.max(360,w/Math.hypot(R.A[0],R.A[1])*1.2))/w;
+  cvs.width=Math.round(w*ppw); cvs.height=Math.round(h*ppw); const x=cvs.getContext('2d'); x.fillStyle='#111'; x.fillRect(0,0,cvs.width,cvs.height);
+  const fx=flip?-1:1; x.setTransform(fx*ppw,0,0,-ppw,flip?x1*ppw:-x0*ppw,y1*ppw); x.save(); x.transform(...R.A); x.imageSmoothingQuality='high'; x.drawImage(R.cv,0,0); x.restore();
+  x.strokeStyle='rgba(0,229,255,.9)'; x.lineWidth=1.5/ppw; for(const p of one.pads){ const hw=(p[2]||0.6)/MM/2, hh=(p[3]||0.6)/MM/2; x.strokeRect(p[0]-hw,p[1]-hh,2*hw,2*hh); }
+  $('rfCropCap').textContent=`${one.ref} · 보드${one.board} · ${one.side}`; }
+function rfCropBlob(){ return new Promise(ok=>$('rfCv').toBlob(ok,'image/jpeg',0.92)); }
+const READ_PROMPT=(c)=>`이 그림은 PCB 기판 사진(또는 도면)에서 부품 하나(레퍼런스 ${c.ref}, 패드 ${c.pads.length}개, ${kindOf(c)}, ${c.side})를 잘라낸 것입니다. 하늘색 사각형이 패드 위치입니다.
+부품 몸체에 인쇄된 마킹과 그로부터 알 수 있는 값을 읽어 주세요. 칩저항 숫자 코드(103=10kΩ, 4R7=4.7Ω, 01C=EIA-96 등)는 값으로 풀어 주세요. 부품이 없거나 마킹이 안 보이면 비워 두세요. 추측이면 note에 적으세요.
+JSON 하나만 답하세요: {"marking":"인쇄된 글자 그대로","value":"값 (예: 10kΩ, 100nF, LM358)","type":"저항/커패시터/IC/다이오드/트랜지스터/LED/커넥터/기타","note":"짧게"}`;
+async function rfRead(c,quiet){ if(!sampleFn) { toast('이 화면에서는 Claude 판독을 쓸 수 없습니다 (claude.ai에서 열면 됩니다)'); return false; }
+  const keep=new Set(sel); sel.clear(); sel.add(c); rfCrop(); const blob=await rfCropBlob(); sel.clear(); for(const k of keep) sel.add(k);
+  try{ const J=await sampleFn.json(READ_PROMPT(c),{images:[blob]}); for(const x of withTwins([c])){ if(J.marking!=null) x.marking=String(J.marking).trim(); if(J.value!=null) x.value=String(J.value).trim(); if(J.type) x.ptype=String(J.type); if(J.note) x.rnote=String(J.note); }
+    if(!quiet){ updateEditor(); renderTable(); } return true; }
+  catch(e){ if(!quiet) toast('읽지 못했습니다: '+(e.code==='rate_limited'?'잠시 후 다시 눌러 주세요':e.message||e.code)); if(e.code==='not_granted'||e.code==='rate_limited') throw e; return false; } }
+let rfBatch=null;
+async function rfReadAll(){ const b=B(); if(rfBatch){ rfBatch.stop=true; return; } if(!b.ref||!b.comps) return;
+  const list=b.comps.filter(c=>passes(c)&&!c.value&&!c.marking); if(!list.length){ toast('읽을 부품이 없습니다 (보이는 부품은 이미 값이 있습니다)'); return; }
+  rfBatch={stop:false}; $('rfAll').textContent='멈추기'; let done=0;
+  try{ for(const c of list){ if(rfBatch.stop) break; $('rfNote').textContent=`마킹 읽는 중 ${done+1}/${list.length} · ${c.ref}`; await rfRead(c,true); done++; if(done%5===0) renderTable(); } }
+  catch(e){ toast('중간에 멈췄습니다: '+(e.code==='rate_limited'?'요청이 많아 잠시 쉬어야 합니다':e.message||e.code)); }
+  rfBatch=null; $('rfAll').textContent='보이는 부품 전체 읽기'; renderTable(); updateEditor(); rfUI(); toast(`${done}개 부품을 읽었습니다. 표의 값·마킹을 확인하세요.`); }
+async function rfRestore(b){ const P=b.refPending; b.refPending=null; if(!P) return;
+  try{ const bm=await createImageBitmap(new Blob([P.bytes],{type:'image/jpeg'})); const c=document.createElement('canvas'); c.width=bm.width; c.height=bm.height; c.getContext('2d').drawImage(bm,0,0);
+    b.ref={cv:c,name:P.meta.name||'참조',page:1,alpha:P.meta.alpha??0.6,above:P.meta.above??true,on:true,mirror:!!P.meta.mirror,A:P.meta.A}; if(b===B()){ rfUI(); draw(); } }catch(e){ console.warn('ref restore',e); } }
+function rfPendingFrom(files,project){ if(!project||!project.ref) return null; const k=Object.keys(files).find(f=>/(^|\/)reference\.(jpg|png)$/i.test(f)); return k?{meta:project.ref,bytes:files[k]}:null; }
+
 
 
 /* ---------- geometry ---------- */
@@ -8286,7 +8577,9 @@ function buildDxfBoard(name,text){ const r=parseDXF(text); const layers={outline
 
 /* ---------- job ---------- */
 function B(){return boards[cur];}
-const P=()=>({tool:+$('tool').value,thick:+$('thick').value,over:+$('over').value,step:+$('step').value,feed:+$('feed').value,plunge:+$('plunge').value,rpm:+$('rpm').value,safe:+$('safe').value,dwell:Math.max(0,+$('dwell').value||0),dir:$('dir').value,tabs:Math.max(0,Math.round(+$('nTabs').value||0)),tabW:+$('tabW').value,tabH:+$('tabH').value,holeD:+$('holeD').value});
+const P=()=>({tool:+$('tool').value,thick:+$('thick').value,over:+$('over').value,step:+$('step').value,feed:+$('feed').value,plunge:+$('plunge').value,rpm:+$('rpm').value,safe:+$('safe').value,dwell:Math.max(0,+$('dwell').value||0),dir:$('dir').value,tabs:Math.max(0,Math.round(+$('nTabs').value||0)),tabW:+$('tabW').value,tabH:+$('tabH').value,holeD:+$('holeD').value,finAllow:Math.max(0,+$('finAllow').value||0),finStep:Math.max(0,+$('finStep').value||0),drillN:Math.max(1,Math.round(+$('drillN').value||1)),drillUp:Math.max(0,+$('drillUp').value||0)});
+// per-outline machining: direction (auto follows the default cut direction) and rough+finish (inside outlines default to it, outside cut in one go)
+const roughOf=L=>L.side!=='on'&&(L.rough==null?L.side==='in':!!L.rough);
 function prepare(b){
   if(!b.loops){ b.loops=buildLoops(b); b.loops.forEach((L,i)=>{L.on=i===0; L.side=L.depth%2===0?'out':'in'; if(b.rotA){L.pts=L.pts.map(([x,y])=>rotPt(b,x,y));}}); if(b.rotA) relayout(b); if(b.isDxf) pickDrawingOutline(b); }
   if(!b.holes) computeHoles(b);
@@ -8294,11 +8587,16 @@ function prepare(b){
 // drawings (DXF/DWG) often carry a sheet border and title block: skip loops that frame the whole sheet and
 // start with the largest remaining loop, preferring one that has holes inside
 function pickDrawingOutline(b){ const Ls=b.loops; if(!Ls.length) return; const [x0,y0,x1,y1]=b.ext, W=x1-x0, H=y1-y0;
-  const frame=L=>(L.box[2]-L.box[0])>=0.85*W&&(L.box[3]-L.box[1])>=0.85*H&&Ls.some(o=>o!==L&&o.area<L.area*0.6&&inPoly(o.pts[0],L.pts));
   const holes=(b.dxfHoles||[]); const nIn=L=>holes.filter(h=>inPoly([h.x,h.y],L.pts)).length;
+  // a drawing frame is a near-rectangle around the whole sheet whose holes all sit inside some smaller outline (the part), never loose in the frame itself;
+  // a round plate or a plate with holes of its own is the part, not a frame
+  const direct=L=>holes.filter(h=>inPoly([h.x,h.y],L.pts)&&!Ls.some(o=>o!==L&&o.area<L.area&&inPoly(o.pts[0],L.pts)&&inPoly([h.x,h.y],o.pts))).length;
+  const frame=L=>(L.box[2]-L.box[0])>=0.85*W&&(L.box[3]-L.box[1])>=0.85*H&&L.area>=0.88*(L.box[2]-L.box[0])*(L.box[3]-L.box[1])&&Ls.some(o=>o!==L&&o.area<L.area*0.6&&inPoly(o.pts[0],L.pts))&&direct(L)===0;
   const cand=Ls.filter(L=>!frame(L)&&L.depth===Ls.filter(o=>frame(o)&&inPoly(L.pts[0],o.pts)).length); if(!cand.length) return;
   const withH=cand.filter(L=>nIn(L)>0); const pick=(withH.length?withH:cand).reduce((a,c)=>c.area>a.area?c:a);
-  for(const L of Ls){ L.on=L===pick; } pick.side='out'; b.dwgPick=pick; }
+  // the part outline is cut outside; outlines directly inside it (cut-outs) are cut inside
+  for(const L of Ls){ L.on=L===pick; } pick.side='out'; b.dwgPick=pick;
+  for(const L of Ls) if(L!==pick&&L.depth===pick.depth+1&&inPoly(L.pts[0],pick.pts)){ L.on=true; L.side='in'; } }
 function computeHoles(b){ const src=$('holeSrc').value; const prev=new Map((b.holes||[]).map(h=>[h.key,h.on]));
   let list=[]; if(src==='dxf'){ (b.dxfHoles||[]).forEach((h,i)=>list.push({x:h.x,y:h.y,ref:'H'+(i+1),d:h.d})); }
   else if(b.comps&&src!=='none'){ for(const c of b.comps){ const dip=(c.kind||(c.tht?'DIP':'SMD'))==='DIP'; if(src==='smd2'){ if(dip||c.pads.length!==2||c.side!=='TOP') continue; } else { if(!dip) continue; if(src==='dip2'&&c.pads.length!==2) continue; } list.push({x:c.x,y:c.y,ref:c.ref,board:c.board}); } }
@@ -8310,7 +8608,7 @@ function rotPt(b,x,y,a){a=((a==null?b.rotA||0:a)%360+360)%360; if(!a) return [x,
 function viewExt(b){const [x0,y0,x1,y1]=b.ext; const q=[[x0,y0],[x1,y1]].map(([x,y])=>rotPt(b,x,y)); return [Math.min(q[0][0],q[1][0]),Math.min(q[0][1],q[1][1]),Math.max(q[0][0],q[1][0]),Math.max(q[0][1],q[1][1])];}
 function rotateAll(step){const b=B(); if(!b) return; if(b.isNc){toast('불러온 G-code는 돌릴 수 없습니다'); return;} pushHist(); const a=((step%360)+360)%360; b.rotA=(((b.rotA||0)+a)%360);
   const R=(x,y)=>rotPt(b,x,y,a);
-  for(const L of b.loops){ L.pts=L.pts.map(([x,y])=>R(x,y)); const sh=L.shape; if(sh){ if(sh.type==='circle'){[sh.cx,sh.cy]=R(sh.cx,sh.cy);} else { const c1=R(sh.x,sh.y), c2=R(sh.x+sh.w,sh.y+sh.h); sh.x=Math.min(c1[0],c2[0]); sh.y=Math.min(c1[1],c2[1]); sh.w=Math.abs(c2[0]-c1[0]); sh.h=Math.abs(c2[1]-c1[1]); } } }
+  for(const L of b.loops){ L.pts=L.pts.map(([x,y])=>R(x,y)); if(L.start) L.start=R(L.start[0],L.start[1]); const sh=L.shape; if(sh){ if(sh.type==='circle'){[sh.cx,sh.cy]=R(sh.cx,sh.cy);} else { const c1=R(sh.x,sh.y), c2=R(sh.x+sh.w,sh.y+sh.h); sh.x=Math.min(c1[0],c2[0]); sh.y=Math.min(c1[1],c2[1]); sh.w=Math.abs(c2[0]-c1[0]); sh.h=Math.abs(c2[1]-c1[1]); } } }
   for(const h of b.holes){ [h.x,h.y]=R(h.x,h.y); h.key=Math.round(h.x)+','+Math.round(h.y); }
   if(b.org) b.org=R(b.org[0],b.org[1]);
   relayout(b); jobCache=null; refresh(); fit(); renderEdit(); toast(`도면 전체를 ${a===90?'반시계 90°':'시계 90°'} 돌렸습니다`);}
@@ -8327,18 +8625,22 @@ function makeJob(b){ const p=P(), o=origin(b), toMM=(x,y)=>[(x-o[0])*MM,(y-o[1])
   const holesAll=[]; for(const [dx,dy] of offs) for(const h of b.holes.filter(h=>h.on)) holesAll.push({...h,x:h.x+dx/MM,y:h.y+dy/MM});
   const holes=nnOrder(holesAll,[o[0],o[1]]).map(h=>({...h,mm:toMM(h.x,h.y)}));
   const cuts=[];
+  const finPasses=[]; if(p.finStep>0&&p.finStep<depth-1e-6){ for(let z=p.finStep;;z+=p.finStep){ if(z>=depth-1e-6){finPasses.push(depth);break;} finPasses.push(z); } } else finPasses.push(depth);
   for(const L of b.loops.filter(l=>l.on).sort((a,c)=>c.depth-a.depth)){ // inner first, outermost last
-    const r=p.tool/2/MM; const off=offsetLoop(L.pts,L.side==='out'?r:L.side==='in'?-r:0);
-    const paths=(off&&off.length?off:[L.pts]).map(path=>{ let q=simplify(path,3); const ccw=signedArea(q)>0;
-      // climb on CW spindle: outside = clockwise, inside = counter-clockwise
-      const wantCCW=(L.side==='in')===(p.dir==='climb'); if(ccw!==wantCCW) q.reverse();
-      // start at the lower-left-most point
-      let si=0; for(let i=1;i<q.length;i++) if(q[i][0]+q[i][1]<q[si][0]+q[si][1]) si=i; q=q.slice(si).concat(q.slice(0,si));
-      return q.map(([x,y])=>toMM(x,y)); });
-    for(const [dx,dy] of offs) for(const q of paths){ const m=q.map(([x,y])=>[x+dx,y+dy]); cuts.push({loop:L,mm:m,len:perim(m),tabs:L.side==='out'||L.side==='in'?p.tabs:0}); } }
+    const r=p.tool/2/MM, sg=L.side==='out'?1:L.side==='in'?-1:0, rough=roughOf(L)&&p.finAllow>0;
+    const mk=(extra)=>{ const off=offsetLoop(L.pts,sg*(r+extra)); return (off&&off.length?off:[L.pts]).map(path=>{ let q=simplify(path,3); const ccw=signedArea(q)>0;
+      // climb on a CW spindle: outside = clockwise, inside = counter-clockwise; an outline can force CW or CCW
+      const wantCCW=L.dir==='cw'?false:L.dir==='ccw'?true:(L.side==='in')===(p.dir==='climb'); if(ccw!==wantCCW) q.reverse();
+      // start where the user put it (projected onto this path), otherwise at the lower-left-most point
+      if(L.start){ let bi=0,bd=1e18,bp=null; for(let i=0;i<q.length;i++){ const a=q[i], c=q[(i+1)%q.length], dx=c[0]-a[0], dy=c[1]-a[1], l2=dx*dx+dy*dy; const k=l2?Math.max(0,Math.min(1,((L.start[0]-a[0])*dx+(L.start[1]-a[1])*dy)/l2)):0; const pr=[a[0]+dx*k,a[1]+dy*k], d=Math.hypot(pr[0]-L.start[0],pr[1]-L.start[1]); if(d<bd){bd=d;bi=i;bp=pr;} }
+        const a=q[bi], c=q[(bi+1)%q.length]; let pts; if(Math.hypot(bp[0]-a[0],bp[1]-a[1])<1) pts=q.slice(bi).concat(q.slice(0,bi)); else if(Math.hypot(bp[0]-c[0],bp[1]-c[1])<1){ const j=(bi+1)%q.length; pts=q.slice(j).concat(q.slice(0,j)); } else pts=[bp,...q.slice(bi+1),...q.slice(0,bi+1)]; q=pts; }
+      else { let si=0; for(let i=1;i<q.length;i++) if(q[i][0]+q[i][1]<q[si][0]+q[si][1]) si=i; q=q.slice(si).concat(q.slice(0,si)); }
+      return q.map(([x,y])=>toMM(x,y)); }); };
+    const stages=rough?[{paths:mk(p.finAllow/MM),passes,kind:'rough'},{paths:mk(0),passes:finPasses,kind:'finish'}]:[{paths:mk(0),passes,kind:'one'}];
+    for(const [dx,dy] of offs) for(const st of stages) for(const q of st.paths){ const m=q.map(([x,y])=>[x+dx,y+dy]); cuts.push({loop:L,mm:m,len:perim(m),passes:st.passes,kind:st.kind,tabs:L.side==='out'||L.side==='in'?p.tabs:0}); } }
   // inner contours of every copy first, then outer contours
   cuts.sort((a,c)=>c.loop.depth-a.loop.depth);
-  return {p,o,passes,depth,holes,cuts,offs,pitch:[pitchX,pitchY],n:[nx,ny]};
+  return {p,o,passes,finPasses,depth,holes,cuts,offs,pitch:[pitchX,pitchY],n:[nx,ny]};
 }
 // Output follows the shop's existing Mach3 programs (ucamcam output, 2026-11-02): same start/end block, G00/G01 with
 // three decimals on every axis, R-format arcs (no IJ-mode dependency), Z3 approach, 20° ramp entry on contours, helical holes.
@@ -8351,8 +8653,9 @@ function gcode(b){ const J=makeJob(b), p=J.p, L=[]; let t=0; const out=s=>L.push
   // holes
   for(const h of J.holes){ const [cx,cy]=h.mm;
     if(holeR<=0.02){ out(`G00 ${XY(cx,cy)} Z${safe} `); out(`G00 ${XY(cx,cy)} Z3.000 `); out(`G01 ${XY(cx,cy)} Z0.000 F${p.plunge} `);
-      for(const z of J.passes){ out(`G01 ${XY(cx,cy)} Z${f3(-z)} `); if(z<J.depth-1e-6) out(`G00 ${XY(cx,cy)} Z0.500 `); }
-      out(`G00 ${XY(cx,cy)} Z${safe} `); t+=J.depth*2/p.plunge+0.02; continue; }
+      // peck drilling: the depth split into equal pecks, retracting to the set height between pecks (2T: 2 × 1.25 mm, back to Z2)
+      for(let k=1;k<=p.drillN;k++){ const z=J.depth*k/p.drillN; if(k>1) out(`G00 ${XY(cx,cy)} Z${f3(-J.depth*(k-1)/p.drillN+0.2)} `); out(`G01 ${XY(cx,cy)} Z${f3(-z)} F${p.plunge} `); if(k<p.drillN) out(`G00 ${XY(cx,cy)} Z${f3(p.drillUp)} `); }
+      out(`G00 ${XY(cx,cy)} Z${safe} `); t+=(J.depth+p.drillN*(p.drillUp+0.2))*2/p.plunge+0.02; continue; }
     // helix down at most 1 mm per turn, then one full turn at depth, in 180° R-arcs
     const pitch=Math.min(p.step,1), turns=Math.max(1,Math.ceil(J.depth/pitch)), A=[cx+holeR,cy], Bp=[cx-holeR,cy];
     out(`G00 ${XY(...A)} Z${safe} `); out(`G00 ${XY(...A)} Z3.000 `); out(`G01 ${XY(...A)} Z0.000 F${p.plunge} `);
@@ -8366,7 +8669,7 @@ function gcode(b){ const J=makeJob(b), p=J.p, L=[]; let t=0; const out=s=>L.push
     const verts=(sA,sB)=>{const v=[]; for(let k=0;k<3;k++) for(let i=0;i<=n;i++){const s=cum[i]+k*tot; if(s>sA+1e-6&&s<sB-1e-6) v.push(s);} return v;};
     const tabTop=-(J.depth-p.tabH-p.over), maxRamp=Math.max(0.5,tot*0.4);
     let zLevel=0, here=null;
-    J.passes.forEach((z,pi)=>{ const zc=-z, last=pi===J.passes.length-1, dz=zc-zLevel, Lr=Math.min(maxRamp,Math.abs(dz)/RAMP), s0=tot-Lr;
+    const PS=c.passes||J.passes; PS.forEach((z,pi)=>{ const zc=-z, last=pi===PS.length-1, dz=zc-zLevel, Lr=Math.min(maxRamp,Math.abs(dz)/RAMP), s0=tot-Lr;
       const zones=[]; if(c.tabs>0&&p.tabH>0&&zc<tabTop-1e-6){ const w=p.tabW+p.tool, span=tot-maxRamp; for(let k=0;k<c.tabs;k++){const m=span*(k+0.5)/c.tabs; zones.push([m-w/2,m+w/2]);} }
       const Ps=ptAt(s0);
       if(pi===0){ out(`G00 ${XY(...Ps)} Z${safe} `); out(`G00 ${XY(...Ps)} Z3.000 `); out(`G01 ${XY(...Ps)} Z0.000 F${p.plunge} `); }
@@ -8424,6 +8727,7 @@ function draw(){ ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#121410'; ctx.fil
   for(const it of selset){ if(it.pts) line(it.pts,'#ffffff',3); else { const [sx,sy]=toS(it.x,it.y); ctx.beginPath(); ctx.arc(sx,sy,Math.max(rH,3*dpr)+3*dpr,0,7); ctx.strokeStyle='#fff'; ctx.lineWidth=2*dpr; ctx.stroke(); } }
   if(ghost){ ctx.setLineDash([4*dpr,3*dpr]); line(shapePts(ghost),'#ffffff',1.5); ctx.setLineDash([]); const t=ghost.type==='circle'?`D ${(ghost.r*2*MM).toFixed(1)}`:`${(ghost.w*MM).toFixed(1)} × ${(ghost.h*MM).toFixed(1)}`; const [sx,sy]=toS(ghost.type==='circle'?ghost.cx:ghost.x+ghost.w,ghost.type==='circle'?ghost.cy:ghost.y+ghost.h); ctx.font=`${12*dpr}px "IBM Plex Mono",monospace`; ctx.fillStyle='#fff'; ctx.fillText(t,sx+6*dpr,sy-6*dpr); }
   if(showDims) drawDims(b,dpr);
+  drawStarts(b,dpr);
   if(meas.a) drawMeas(dpr);
   { const [sx,sy]=toS(o[0],o[1]), r=14*dpr; ctx.strokeStyle='#ff3df0'; ctx.lineWidth=2*dpr; ctx.beginPath(); ctx.moveTo(sx,sy);ctx.lineTo(sx+r*1.8,sy);ctx.moveTo(sx,sy);ctx.lineTo(sx,sy-r*1.8);ctx.stroke(); ctx.fillStyle='#ff3df0'; ctx.font=`${11*dpr}px "IBM Plex Mono",monospace`; ctx.fillText('X',sx+r*1.9,sy+4*dpr); ctx.fillText('Y',sx-4*dpr,sy-r*2); ctx.fillText('0,0',sx+4*dpr,sy+14*dpr); }
   if(b.isNc){ const S=ensureSim(); if(S){ ctx.beginPath(); for(const g of S.segs){ if(g.rapid) continue; const [a,c]=toS(g.x0/MM,g.y0/MM),[a2,c2]=toS(g.x1/MM,g.y1/MM); ctx.moveTo(a,c); ctx.lineTo(a2,c2);} ctx.strokeStyle='rgba(255,210,63,.45)'; ctx.lineWidth=1*dpr; ctx.stroke(); } }
@@ -8526,6 +8830,13 @@ function dimLine(a,c,off,dpr,vert){ // a,c screen points; off = screen offset of
   else { const y=a[1]+off; ctx.moveTo(a[0],a[1]+4*dpr); ctx.lineTo(a[0],y+4*dpr); ctx.moveTo(c[0],c[1]+4*dpr); ctx.lineTo(c[0],y+4*dpr); ctx.moveTo(a[0],y); ctx.lineTo(c[0],y); ctx.stroke(); arrowHead(a[0],y,1,0,dpr); arrowHead(c[0],y,-1,0,dpr); } }
 function arrowHead(x,y,ux,uy,dpr){ const L=7*dpr,W=3*dpr; ctx.fillStyle='#f2e6b0'; ctx.beginPath(); ctx.moveTo(x,y); ctx.lineTo(x+ux*L-uy*W,y+uy*L+ux*W); ctx.lineTo(x+ux*L+uy*W,y+uy*L-ux*W); ctx.closePath(); ctx.fill(); }
 // every outline that will be cut (and only the outermost of nested ones) gets its width below and height to the left
+// start point and cutting direction of every contour pass (first array copy)
+function drawStarts(b,dpr){ const J=jobCache; if(!J||b.isNc||v3.on) return; const o=J.o, seen=new Set();
+  for(const c of J.cuts){ const key=c.loop.id+'|'+c.kind; if(seen.has(key)) continue; seen.add(key); const q=c.mm; if(q.length<2) continue;
+    const W=(m)=>toS(m[0]/MM+o[0],m[1]/MM+o[1]); const a=W(q[0]); let k=1; while(k<q.length-1&&Math.hypot(W(q[k])[0]-a[0],W(q[k])[1]-a[1])<14*dpr) k++; const n=W(q[k]);
+    const ux=(n[0]-a[0]), uy=(n[1]-a[1]), l=Math.hypot(ux,uy)||1, dx=ux/l, dy=uy/l, L=18*dpr, tip=[a[0]+dx*L,a[1]+dy*L];
+    ctx.strokeStyle=ctx.fillStyle=c.kind==='finish'?'#7dffb0':'#2ee66b'; ctx.lineWidth=2*dpr; ctx.beginPath(); ctx.arc(a[0],a[1],4.5*dpr,0,7); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(tip[0],tip[1]); ctx.stroke(); ctx.beginPath(); ctx.moveTo(tip[0],tip[1]); ctx.lineTo(tip[0]-dx*7*dpr-dy*4*dpr,tip[1]-dy*7*dpr+dx*4*dpr); ctx.lineTo(tip[0]-dx*7*dpr+dy*4*dpr,tip[1]-dy*7*dpr-dx*4*dpr); ctx.closePath(); ctx.fill(); } }
 function drawDims(b,dpr){ if(b.noDims) return; const Ls=(b.loops||[]).filter(L=>L.on&&L.box&&!(b.loops||[]).some(o=>o!==L&&o.on&&o.box&&o.area>L.area&&inPoly(L.pts[0],o.pts))); 
   for(const L of Ls){ const [x0,y0,x1,y1]=L.box, A=toS(x0,y0), C=toS(x1,y0), D=toS(x0,y1); const off=22*dpr;
     dimLine(A,C,off,dpr,false); dimLabel(((x1-x0)*MM).toFixed(2),(A[0]+C[0])/2,A[1]+off,dpr,false);
@@ -8601,7 +8912,7 @@ cv.addEventListener('pointermove',e=>{const d=devicePixelRatio; readout(e.offset
 function up(e){ pointers.delete(e.pointerId); if(pointers.size<2)pinch=null; const d=devicePixelRatio;
   if(drag){ const w=toW(e.offsetX*d,e.offsetY*d);
     if(!drag.moved&&v3.on){}
-    else if(!drag.moved){ if(picking) pickOrigin(w); else if(mode==='toggle') toggleAt(w); else if(mode==='hole'&&drag.act!=='move') addHole(snapW(w)); else if(mode==='measure') measClick(w); else if(mode==='select'&&drag.act!=='move'){ selset.clear(); renderEdit(); draw(); } else if(mode==='select'&&drag.shift){} }
+    else if(!drag.moved){ if(picking) pickOrigin(w); else if(mode==='toggle') toggleAt(w); else if(mode==='hole'&&drag.act!=='move') addHole(snapW(w)); else if(mode==='measure') measClick(w); else if(mode==='start') setStartAt(w); else if(mode==='select'&&drag.act!=='move'){ selset.clear(); renderEdit(); draw(); } else if(mode==='select'&&drag.shift){} }
     else if((drag.act==='move'||drag.act==='resize')&&drag.live){ relayout(B()); refresh(); renderEdit(); }
     else if(drag.act==='shape'&&ghost){ const g=ghost; ghost=null; if(g.w>0.5/MM*0+G*5&&(g.type==='circle'||g.h>G*5)) addShape(g); else draw(); } }
   if(pointers.size===0) drag=null; }
@@ -8609,6 +8920,9 @@ cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
 function distSeg(p,a,c){const dx=c[0]-a[0],dy=c[1]-a[1],l=dx*dx+dy*dy; let t=l?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/l:0; t=Math.max(0,Math.min(1,t)); return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy);}
 function pickOrigin(w){const b=B(), R=12*devicePixelRatio/view.s; let best=null,bd=R*1.8; const cand=[...(b.holes||[]).map(h=>[h.x,h.y]), ...(b.loops||[]).flatMap(L=>L.pts)]; for(const q of cand){const d=Math.hypot(q[0]-w[0],q[1]-w[1]); if(d<bd){bd=d;best=q;}}
   b.org=best?[best[0],best[1]]:[w[0],w[1]]; $('originSel').value='pick'; picking=false; $('pickBtn').setAttribute('aria-pressed','false'); refresh(); toast(best?'원점을 가장 가까운 점에 붙였습니다':'클릭한 위치를 원점으로 썼습니다');}
+function setStartAt(w){ const b=B(); if(!b||!b.loops) return; const R=12*devicePixelRatio/view.s; let best=null,bd=R;
+  for(const L of b.loops){ if(!L.on) continue; for(let i=0;i<L.pts.length;i++){ const d=distSeg(w,L.pts[i],L.pts[(i+1)%L.pts.length]); if(d<bd){bd=d;best=L;} } }
+  if(!best){ toast('켜진 외곽선 위를 클릭하세요'); return; } pushHist(); if(drag&&drag.shift){ best.start=null; toast(`윤곽 ${best.id} 시작점을 기본(왼쪽 아래)으로 돌렸습니다`); } else { best.start=[w[0],w[1]]; toast(`윤곽 ${best.id} 시작점을 정했습니다`); } refresh(); }
 function toggleAt(w){const h=hitTest(w); if(!h) return; h.on=!h.on; refresh();}
 /* ---------- drawing edits ---------- */
 function rectPts(x,y,w,h,r){ r=Math.max(0,Math.min(r,w/2,h/2)); if(r<1) return [[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
@@ -8618,7 +8932,7 @@ function circPts(cx,cy,r){const n=Math.max(24,Math.min(180,Math.ceil(2*Math.PI*r
 function shapeFrom(a,c){ if(mode==='circle'){ const r=snap(Math.hypot(c[0]-a[0],c[1]-a[1])); return {type:'circle',cx:a[0],cy:a[1],r,w:r}; }
   return {type:'rect',x:Math.min(a[0],c[0]),y:Math.min(a[1],c[1]),w:Math.abs(c[0]-a[0]),h:Math.abs(c[1]-a[1]),r:(+$('rectR').value||0)/MM}; }
 function shapePts(sh){ return sh.type==='circle'?circPts(sh.cx,sh.cy,sh.r):rectPts(sh.x,sh.y,sh.w,sh.h,sh.r); }
-function pushHist(){const b=B(); hist.push({name:b.name,loops:b.loops.map(L=>({pts:L.pts.map(q=>q.slice()),on:L.on,side:L.side,shape:L.shape?{...L.shape}:null})),holes:b.holes.map(h=>({...h})),rotA:b.rotA||0,org:b.org?b.org.slice():null}); if(hist.length>60) hist.shift();}
+function pushHist(){const b=B(); hist.push({name:b.name,loops:b.loops.map(L=>({pts:L.pts.map(q=>q.slice()),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,shape:L.shape?{...L.shape}:null})),holes:b.holes.map(h=>({...h})),rotA:b.rotA||0,org:b.org?b.org.slice():null}); if(hist.length>60) hist.shift();}
 function undo(){const b=B(); const h=hist.pop(); if(!h||h.name!==b.name){toast('되돌릴 작업이 없습니다');return;} b.loops=h.loops; b.holes=h.holes; const rc=(b.rotA||0)!==h.rotA; b.rotA=h.rotA; b.org=h.org; if(rc) fit(); selset.clear(); relayout(b); buildLoopsUI(); refresh(); renderEdit(); toast('되돌렸습니다');}
 function relayout(b){ for(const L of b.loops){ let x0=1e12,y0=1e12,x1=-1e12,y1=-1e12; for(const [x,y] of L.pts){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;} L.box=[x0,y0,x1,y1]; L.area=Math.abs(signedArea(L.pts)); }
   b.loops.sort((a,c)=>c.area-a.area); b.loops.forEach((L,i)=>{L.id=i+1; L.depth=b.loops.filter(o=>o!==L&&o.area>L.area&&inPoly(L.pts[0],o.pts)).length; if(!L.side) L.side=L.depth%2===0?'out':'in';});
@@ -8628,7 +8942,7 @@ function addShape(sh){const b=B(); pushHist(); const L={pts:shapePts(sh),shape:s
 function addHole(w){const b=B(); pushHist(); const n=(b.holes.filter(h=>h.user).length)+1; const h={x:w[0],y:w[1],ref:'U'+n,user:true,on:true,key:Math.round(w[0])+','+Math.round(w[1])}; b.holes.push(h); selset=new Set([h]); refresh(); renderEdit();}
 function delSel(){const b=B(); if(!selset.size) return; pushHist(); b.loops=b.loops.filter(L=>!selset.has(L)); b.holes=b.holes.filter(h=>!selset.has(h)); const n=selset.size; selset.clear(); relayout(b); refresh(); renderEdit(); toast(`${n}개 삭제했습니다`);}
 function setMode(m){mode=m; picking=false; $('pickBtn').setAttribute('aria-pressed','false'); for(const bt of document.querySelectorAll('#tools button[data-m]')) bt.setAttribute('aria-pressed',bt.dataset.m===m); cv.style.cursor=m==='select'?'default':'crosshair';
-  $('modeNote').textContent={toggle:'클릭: 외곽·홀 가공 켜기/끄기',select:'클릭: 선택 (Shift 추가), 끌기: 이동, 흰 네모 끌기: 크기 조정 (0.1mm 단위), Delete: 삭제',hole:'클릭: 홀 추가, 기존 홀 끌기: 이동 (0.1mm 단위)',rect:'빈 곳 끌기: 사각형 그리기, 선 끌기: 이동, 흰 네모 끌기: 크기 조정. 정확한 치수는 왼쪽 "도면 편집"',circle:'중심에서 끌기: 원 그리기, 선 끌기: 이동, 흰 네모 끌기: 지름 조정',measure:'첫 점을 클릭하세요 (모서리·홀 중심·외곽선에 붙음)'}[m]; if(m!=='measure'){meas.a=meas.b=meas.hover=null;} if(m!=='select'){selset.clear(); renderEdit();} draw();}
+  $('modeNote').textContent={toggle:'클릭: 외곽·홀 가공 켜기/끄기',select:'클릭: 선택 (Shift 추가), 끌기: 이동, 흰 네모 끌기: 크기 조정 (0.1mm 단위), Delete: 삭제',hole:'클릭: 홀 추가, 기존 홀 끌기: 이동 (0.1mm 단위)',rect:'빈 곳 끌기: 사각형 그리기, 선 끌기: 이동, 흰 네모 끌기: 크기 조정. 정확한 치수는 왼쪽 "도면 편집"',circle:'중심에서 끌기: 원 그리기, 선 끌기: 이동, 흰 네모 끌기: 지름 조정',measure:'첫 점을 클릭하세요 (모서리·홀 중심·외곽선에 붙음)',start:'외곽선 위를 클릭: 그 윤곽의 가공 시작 위치 (초록 점·화살표가 시작점과 방향). Shift+클릭: 기본 위치로'}[m]; if(m!=='measure'){meas.a=meas.b=meas.hover=null;} if(m!=='select'){selset.clear(); renderEdit();} draw();}
 document.addEventListener('keydown',e=>{ if(e.target.matches('input,select,textarea')) return; if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'){e.preventDefault(); undo();} else if(e.key==='Delete'||e.key==='Backspace'){ if(selset.size){e.preventDefault(); delSel();} } else if(e.key==='Escape'){selset.clear(); renderEdit(); draw();} });
 function renderEdit(){const el=$('editBox'), b=B(); if(!b){el.innerHTML='';return;} const o=jobCache?jobCache.o:origin(b), mm=v=>(v*MM).toFixed(2);
   const items=[...selset]; let h='';
@@ -8664,7 +8978,12 @@ function esc(s){return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','
 function buildLoopsUI(){const b=B(), el=$('loops'); el.innerHTML=''; if(!b.loops||!b.loops.length){el.innerHTML=b.isNew?'<p class="note">새 도면입니다. 위 도구의 "사각형"이나 "원"으로 외곽을 그리고, "홀 추가"로 홀을 찍으세요. 치수는 그린 뒤 "도면 편집"에서 고칩니다.</p>':'<p class="note">닫힌 윤곽선을 찾지 못했습니다. 외곽 레이어가 있는 거버를 불러와 주세요.</p>'; return;}
   for(const L of b.loops){ const [x0,y0,x1,y1]=L.box; const row=document.createElement('div'); row.className='item';
     row.innerHTML=`<input type="checkbox" id="lp${L.id}" ${L.on?'checked':''}><label for="lp${L.id}">윤곽 ${L.id} <span class="m">${((x1-x0)*MM).toFixed(1)}×${((y1-y0)*MM).toFixed(1)}</span></label><select aria-label="가공 위치"><option value="out">바깥</option><option value="in">안쪽</option><option value="on">선 위</option></select>`;
-    row.querySelector('input').onchange=e=>{L.on=e.target.checked; refresh();}; const s=row.querySelector('select'); s.value=L.side; s.onchange=()=>{L.side=s.value; refresh();}; el.appendChild(row);} }
+    const sub=document.createElement('div'); sub.className='sub';
+    sub.innerHTML=`<select aria-label="절삭 방향"><option value="">방향: 기본</option><option value="cw">시계 방향 (CW)</option><option value="ccw">반시계 (CCW)</option></select><label class="chk"><input type="checkbox"> 황삭+정삭</label>`;
+    const ds=sub.querySelector('select'), rc=sub.querySelector('input');
+    const syncSub=()=>{ const autoCW=(L.side==='in')===($('dir').value!=='climb'); ds.options[0].textContent=`방향: 기본 (${L.side==='on'?'-':autoCW?'시계':'반시계'})`; ds.value=L.dir||''; rc.checked=roughOf(L); rc.disabled=L.side==='on'; sub.hidden=!L.on; };
+    ds.onchange=()=>{ L.dir=ds.value||null; refresh(); }; rc.onchange=()=>{ L.rough=rc.checked; refresh(); };
+    row.querySelector('input').onchange=e=>{L.on=e.target.checked; syncSub(); refresh();}; const s=row.querySelector('select'); s.value=L.side; s.onchange=()=>{L.side=s.value; syncSub(); refresh();}; syncSub(); row.appendChild(sub); el.appendChild(row);} }
 function refresh(){const b=B(); if(!b) return;
   if(b.isNc){ jobCache=null; b._g={text:b.ncText}; const S=parseSim(b.ncText); let zmin=0; for(const g of S.segs) zmin=Math.min(zmin,g.z1);
     $('stats').innerHTML=`<span>파일</span><span>불러온 G-code (보기 전용)</span><span>가공 범위</span><span>${((b.ext[2]-b.ext[0])*MM).toFixed(1)} × ${((b.ext[3]-b.ext[1])*MM).toFixed(1)} mm</span><span>최대 깊이</span><span>${(-zmin).toFixed(2)} mm</span><span>예상 시간</span><span>약 ${Math.ceil(S.total)}분</span><span>G-code</span><span>${b.ncText.split(/\r?\n/).length}줄</span>`;
@@ -8682,12 +9001,12 @@ async function select(n){cur=n; selset.clear(); meas.a=meas.b=meas.hover=null; b
   prepare(b); buildLoopsUI(); refresh(); fit();
   if(!b.comps){ $('busy').hidden=false; await new Promise(r=>setTimeout(r,30)); try{ await extract(b); }catch(e){ console.error(e); b.comps=[]; } $('busy').hidden=true; computeHoles(b); if(!b.holes.length&&$('holeSrc').value==='dip2'&&b.comps.some(c=>!c.tht&&c.pads.length===2)){ $('holeSrc').value='smd2'; computeHoles(b); toast('DIP LED가 없어서 SMD 2패드 부품 중심을 홀로 잡았습니다'); } if(B()===b) refresh(); } }
 // diffuser plate: 2T polycarbonate (PC) — keep the feed up so the chips do not melt and weld, 2.5φ holes plunged straight with the 2.5 end mill (홍반장 2026-11-02); bakelite: 3.3φ LED holes by helix
-const BASE={tool:2.5,over:0.3,rpm:18000,dwell:5,safe:10,dir:'climb',nTabs:0,tabW:3,tabH:1};
+const BASE={tool:2.5,over:0.3,rpm:18000,dwell:5,safe:10,dir:'conv',nTabs:0,tabW:3,tabH:1,finAllow:0.2,finStep:0,drillN:2,drillUp:2};
 const PRESETS={diff2:{...BASE,thick:2,over:0.5,step:2.5,feed:500,plunge:100,holeD:2.5},plate:{...BASE,thick:8,step:2,feed:500,plunge:100,holeD:3.3},etc:{...BASE,thick:5,step:2,feed:500,plunge:100,holeD:3.3}};
 const PKEYS=Object.keys(PRESETS.plate);
 // each job type remembers the last values used with it (this browser only), and the last job type is the start-up choice
 const store={get(k){try{return JSON.parse(localStorage.getItem('ecam2.'+k));}catch(e){return null;}}, set(k,v){try{localStorage.setItem('ecam2.'+k,JSON.stringify(v));}catch(e){}}};
-function presetVals(name){return {...PRESETS[name],...(store.get('preset.'+name)||{})};}
+function presetVals(name){ const s={...(store.get('preset.'+name)||{})}; if(s.finAllow==null) delete s.dir; return {...PRESETS[name],...s}; }
 function applyPreset(name){ if(!PRESETS[name]) name='plate'; $('preset').value=name; const v=presetVals(name); for(const k of PKEYS) if($(k)&&v[k]!=null) $(k).value=v[k]; store.set('last',name); }
 function savePreset(){ const name=$('preset').value; if(!PRESETS[name]) return; const v={}; for(const k of PKEYS) v[k]=$(k).type==='number'?+$(k).value:$(k).value; store.set('preset.'+name,v); }
 for(const bt of document.querySelectorAll('#tools button[data-m]')) bt.onclick=()=>setMode(bt.dataset.m);
@@ -8697,7 +9016,8 @@ $('preset').onchange=e=>{applyPreset(e.target.value); refresh();};
 $('presetReset').onclick=()=>{const n=$('preset').value; store.set('preset.'+n,null); applyPreset(n); refresh(); toast('기본값으로 되돌렸습니다');};
 applyPreset(store.get('last')||'plate');
 for(const id of ['nx','ny','gx','gy']) $(id).addEventListener('change',()=>{refresh(); fit();});
-for(const id of ['tool','thick','over','step','feed','plunge','rpm','dwell','safe','dir','nTabs','tabW','tabH','holeD']) $(id).addEventListener('change',()=>{ savePreset(); refresh(); });
+$('dir').addEventListener('change',()=>buildLoopsUI());
+for(const id of ['tool','thick','over','step','feed','plunge','rpm','dwell','safe','dir','nTabs','tabW','tabH','holeD','finAllow','finStep','drillN','drillUp']) $(id).addEventListener('change',()=>{ savePreset(); refresh(); });
 $('holeSrc').onchange=()=>{const b=B(); computeHoles(b); refresh();};
 $('holesAll').onclick=()=>{for(const h of B().holes||[]) h.on=true; refresh();};
 $('holesNone').onclick=()=>{for(const h of B().holes||[]) h.on=false; refresh();};
@@ -8721,7 +9041,7 @@ $('zipBtn').onclick=async()=>{const b=B(); if(!b||!b._g||b.isNc) return; await s
 const SETTING_IDS=['preset',...PKEYS,'holeSrc','originSel','nx','ny','gx','gy','rectR'];
 function projectJSON(b){ const st={}; for(const id of SETTING_IDS) if($(id)) st[id]=$(id).value;
   return {app:'일렉트레이너 CNC CAM',version:1,name:b.name,savedAt:new Date().toISOString(),kind:b.isDxf?'drawing':'gerber',ext:b.ext,rotA:b.rotA||0,org:b.org||null,settings:st,
-    loops:b.loops.map(L=>({pts:L.pts.map(([x,y])=>[Math.round(x*10)/10,Math.round(y*10)/10]),on:L.on,side:L.side,shape:L.shape||null})),
+    loops:b.loops.map(L=>({pts:L.pts.map(([x,y])=>[Math.round(x*10)/10,Math.round(y*10)/10]),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,shape:L.shape||null})),
     holes:b.holes.map(h=>({x:h.x,y:h.y,ref:h.ref,on:h.on,user:!!h.user,d:h.d}))}; }
 $('projBtn').onclick=async()=>{const b=B(); if(!b||!b.loops||b.isNc){toast('저장할 작업이 없습니다'); return;} const zip=new JSZip();
   zip.file('cncproject.json',JSON.stringify(projectJSON(b))); for(const [fn,bytes] of Object.entries(b.files||{})) zip.file('src/'+fn,bytes);
@@ -8731,7 +9051,7 @@ async function loadCamProject(zip,fallbackName){ const P=JSON.parse(await zip.fi
   let name=P.name||fallbackName; while(boards[name]) name+=' (2)';
   let b; if(P.kind==='gerber'&&Object.keys(files).length){ b=buildBoard(name,files); } else { b={name,files:{},layers:{},srcNames:{},ext:P.ext,isDxf:true,dxfHoles:[]}; }
   b.ext=P.ext||b.ext; b.comps=[]; b.fromProject=true; b.rotA=P.rotA||0; b.org=P.org||null;
-  b.loops=P.loops.map(L=>({pts:L.pts,on:L.on,side:L.side,shape:L.shape||undefined})); relayout(b);
+  b.loops=P.loops.map(L=>({pts:L.pts,on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,shape:L.shape||undefined})); relayout(b);
   b.holes=P.holes.map(h=>({...h,keep:true,key:Math.round(h.x)+','+Math.round(h.y)}));
   for(const [id,v] of Object.entries(P.settings||{})) if($(id)) $(id).value=v;
   boards[name]=b; return name; }

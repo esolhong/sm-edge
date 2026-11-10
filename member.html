@@ -176,12 +176,18 @@ async function writeMember(fb, user, profile, isNew) {
   await F.setDoc(F.doc(fb.db, "members", user.uid), data, { merge: !isNew });
 }
 
+// 로그인·가입 뒤 돌아갈 곳 (이 사이트 안의 상대 주소만 허용)
+function safeNext() {
+  const n = new URLSearchParams(location.search).get("next") || "";
+  return /^[A-Za-z0-9_\-./#]+$/.test(n) && !n.startsWith("/") && !n.includes("..") ? n : "";
+}
+
 // 로그인
 document.getElementById("f-login").addEventListener("submit", async (e) => {
   e.preventDefault(); const f = e.target; const fb = await getFirebase(); if (!fb) return;
   try {
     await fb.A.signInWithEmailAndPassword(fb.auth, val(f, "email"), f.elements.password.value);
-    location.href = new URLSearchParams(location.search).get("next") || "support.html";
+    location.href = safeNext() || "support.html";
   } catch (err) { showMsg(msg, koError(err), "err"); }
 });
 
@@ -204,7 +210,7 @@ document.getElementById("f-signup").addEventListener("submit", async (e) => {
     await writeMember(fb, cred.user, profileOf(f), true);
     try { await fb.A.sendEmailVerification(cred.user); } catch (_) {}
     showMsg(msg, "회원가입이 완료되었습니다. 이제 도면 자료를 내려받을 수 있습니다.", "ok");
-    setTimeout(() => (location.href = "support.html#drawings"), 1500);
+    setTimeout(() => (location.href = safeNext() || "support.html#drawings"), 1500);
   } catch (err) { showMsg(msg, koError(err), "err"); btn.disabled = false; }
 });
 
