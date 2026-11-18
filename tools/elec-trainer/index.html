@@ -57,12 +57,13 @@
       }
 
       var buildUrl = "Build";
-      var loaderUrl = buildUrl + "/WebBuild.loader.js";
+      var buildVer = "?v=20261118";  // 새 빌드를 올릴 때마다 바꿀 것 (브라우저에 남은 예전 파일 방지)
+      var loaderUrl = buildUrl + "/WebBuild.loader.js" + buildVer;
       var config = {
         arguments: [],
-        dataUrl: buildUrl + "/WebBuild.data",
-        frameworkUrl: buildUrl + "/WebBuild.framework.js",
-        codeUrl: buildUrl + "/WebBuild.wasm",
+        dataUrl: buildUrl + "/WebBuild.data" + buildVer,
+        frameworkUrl: buildUrl + "/WebBuild.framework.js" + buildVer,
+        codeUrl: buildUrl + "/WebBuild.wasm" + buildVer,
         streamingAssetsUrl: "StreamingAssets",
 
         // If you have a custom web site structure, or want to place multiple Unity build instances on the same page,
