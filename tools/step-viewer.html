@@ -401,8 +401,8 @@ function make2D(db){
       try{ switch(e.type){
         case 'LINE': { const a=ap(m,e.startPoint), b=ap(m,e.endPoint); push(layer,col,[a,b],false); if(!inDim) segs.push([a,b,layer]); break; }
         case 'CIRCLE': { const pts=arc(m,e.center,e.radius,0,2*Math.PI); push(layer,col,pts,true); const c=ap(m,e.center); const ci={x:c[0],y:c[1],r:e.radius*m.s,layer}; if(!inDim) circles.push(ci); items[items.length-1].circ=ci; verts.push([c,layer]); break; }
-        case 'ARC': { const pts=arc(m,e.center,e.radius,e.startAngle,e.endAngle); push(layer,col,pts,false); const c=ap(m,e.center); verts.push([c,layer]); if(!inDim) arcs.push({x:c[0],y:c[1],r:e.radius*m.s,mid:pts[Math.floor(pts.length/2)],layer}); break; }
-        case 'LWPOLYLINE': case 'POLYLINE2D': { const vs=e.vertices||[]; if(vs.length<2) break; const closed=(e.flag&1)===1||(e.flag&512)===512; const out=[ap(m,vs[0])], n=closed?vs.length:vs.length-1; for(let k=0;k<n;k++) out.push(...bul(m,vs[k],vs[(k+1)%vs.length],vs[k].bulge||0)); push(layer,col,out,closed); vs.forEach(v=>verts.push([ap(m,v),layer])); if(!inDim){ const n2=closed?vs.length:vs.length-1; for(let k=0;k<n2;k++){ const v0=vs[k], v1=vs[(k+1)%vs.length]; if(!v0.bulge) segs.push([ap(m,v0),ap(m,v1),layer]); else { const dx=v1.x-v0.x, dy=v1.y-v0.y, ch=Math.hypot(dx,dy), th=4*Math.atan(v0.bulge), r=Math.abs(ch/(2*Math.sin(th/2))); const k2=(1-v0.bulge*v0.bulge)/(4*v0.bulge); const c=ap(m,{x:(v0.x+v1.x)/2-dy*k2,y:(v0.y+v1.y)/2+dx*k2}); const sub=bul(m,v0,v1,v0.bulge); if(Math.abs(th)<Math.PI*1.9) arcs.push({x:c[0],y:c[1],r:r*m.s,mid:sub[Math.floor(sub.length/2)],layer}); } } } break; }
+        case 'ARC': { const pts=arc(m,e.center,e.radius,e.startAngle,e.endAngle); push(layer,col,pts,false); const c=ap(m,e.center); verts.push([c,layer]); if(!inDim) arcs.push({x:c[0],y:c[1],r:e.radius*m.s,mid:pts[Math.floor(pts.length/2)],layer,sw:((e.endAngle-e.startAngle)%(2*Math.PI)+2*Math.PI)%(2*Math.PI)||2*Math.PI}); break; }
+        case 'LWPOLYLINE': case 'POLYLINE2D': { const vs=e.vertices||[]; if(vs.length<2) break; const closed=(e.flag&1)===1||(e.flag&512)===512; const out=[ap(m,vs[0])], n=closed?vs.length:vs.length-1; for(let k=0;k<n;k++) out.push(...bul(m,vs[k],vs[(k+1)%vs.length],vs[k].bulge||0)); push(layer,col,out,closed); vs.forEach(v=>verts.push([ap(m,v),layer])); if(!inDim){ const n2=closed?vs.length:vs.length-1; for(let k=0;k<n2;k++){ const v0=vs[k], v1=vs[(k+1)%vs.length]; if(!v0.bulge) segs.push([ap(m,v0),ap(m,v1),layer]); else { const dx=v1.x-v0.x, dy=v1.y-v0.y, ch=Math.hypot(dx,dy), th=4*Math.atan(v0.bulge), r=Math.abs(ch/(2*Math.sin(th/2))); const k2=(1-v0.bulge*v0.bulge)/(4*v0.bulge); const c=ap(m,{x:(v0.x+v1.x)/2-dy*k2,y:(v0.y+v1.y)/2+dx*k2}); const sub=bul(m,v0,v1,v0.bulge); if(Math.abs(th)<Math.PI*1.9) arcs.push({x:c[0],y:c[1],r:r*m.s,mid:sub[Math.floor(sub.length/2)],layer,sw:Math.abs(th)}); } } } break; }
         case 'ELLIPSE': { const c=e.center, M=e.majorAxisEndPoint, rr=e.axisRatio; let t0=e.startAngle||0, t1=e.endAngle||2*Math.PI; if(t1<=t0) t1+=2*Math.PI; const n=Math.max(48,Math.ceil((t1-t0)/(Math.PI/90))), o=[];
           for(let i=0;i<=n;i++){const t=t0+(t1-t0)*i/n; o.push(ap(m,{x:c.x+M.x*Math.cos(t)-M.y*rr*Math.sin(t), y:c.y+M.y*Math.cos(t)+M.x*rr*Math.sin(t)}));} push(layer,col,o,false); break; }
         case 'SPLINE': { const pts=(e.fitPoints&&e.fitPoints.length>1)?e.fitPoints:e.controlPoints; if(pts&&pts.length>1) push(layer,col,pts.map(q=>ap(m,q)),false); break; }
@@ -458,6 +458,7 @@ function draw2D(d){
       lines.forEach((ln,k)=>g2.fillText(ln,0,y0+k*lh)); g2.restore(); } }
   // measure overlay (screen space)
   g2.setTransform(dpr,0,0,dpr,0,0);
+  if(d.moveBox){ const a=W2S(d,d.moveBox[0],d.moveBox[1]), b=W2S(d,d.moveBox[2],d.moveBox[3]); g2.save(); g2.setLineDash([6,4]); g2.strokeStyle='#f59e0b'; g2.lineWidth=1.5; g2.strokeRect(Math.min(a[0],b[0])-6,Math.min(a[1],b[1])-6,Math.abs(b[0]-a[0])+12,Math.abs(b[1]-a[1])+12); g2.restore(); }
   const mk=(p,col)=>{ const q=W2S(d,p[0],p[1]); g2.fillStyle=col; g2.beginPath(); g2.arc(q[0],q[1],4,0,7); g2.fill(); };
   if(d.mpts.length){ g2.strokeStyle='#ffc83d'; g2.lineWidth=1.5; if(d.mpts.length===2){ const a=W2S(d,...d.mpts[0]), b=W2S(d,...d.mpts[1]); g2.beginPath(); g2.moveTo(...a); g2.lineTo(...b); g2.stroke(); } d.mpts.forEach(p=>mk(p,'#ffc83d')); }
   if(d.hover&&d.hover.snap) mk(d.hover.snap,'#5fd39a');
@@ -466,14 +467,15 @@ function draw2D(d){
 function enter2D(d){
   $('cv2').hidden=false; draw2D(d);
   const [x0,y0,x1,y1]=d.gext;
-  $('tb').innerHTML=`<button id="fitB">화면 맞춤</button><button id="m2B" aria-pressed="${d.measure&&!d.calib}">거리 재기</button><button id="calB" aria-pressed="${d.calib}" title="두 점을 찍고 실제 길이를 넣으면 도면 전체 크기를 맞춥니다">축척 맞추기</button><select id="adM" title="자동 치수 방식" style="font:inherit;border:1px solid var(--line);border-radius:7px;padding:6px;background:rgba(255,255,255,.92)"><option value="part" ${d.adMode!=='asm'?'selected':''}>단품: 가공 포인트</option><option value="asm" ${d.adMode==='asm'?'selected':''}>완제품: 취부홀·외곽 기준</option></select><button id="adB" title="화면에 보이는 부품에 치수를 붙입니다">자동 치수</button><button id="adX">자동 치수 지우기</button><button id="dxfB">DXF 저장</button>`;
+  $('tb').innerHTML=`<button id="fitB">화면 맞춤</button><button id="m2B" aria-pressed="${d.measure&&!d.calib}">거리 재기</button><button id="calB" aria-pressed="${d.calib}" title="두 점을 찍고 실제 길이를 넣으면 도면 전체 크기를 맞춥니다">축척 맞추기</button><button id="mvB" aria-pressed="${!!d.moveMode}" title="정면도·측면도 같은 부품 뷰를 끌어서 옮깁니다 (치수선이 겹칠 때 간격 벌리기)">뷰 이동</button><select id="adM" title="자동 치수 방식" style="font:inherit;border:1px solid var(--line);border-radius:7px;padding:6px;background:rgba(255,255,255,.92)"><option value="part" ${d.adMode!=='asm'?'selected':''}>단품: 가공 포인트</option><option value="asm" ${d.adMode==='asm'?'selected':''}>완제품: 취부홀·외곽 기준</option></select><button id="adB" title="화면에 보이는 부품에 치수를 붙입니다">자동 치수</button><button id="adX">자동 치수 지우기</button><button id="dxfB">DXF 저장</button>`;
   $('tb').onclick=e=>{ const b=e.target.closest('button'); if(!b) return;
     if(b.id==='fitB'){ fit2D(d); draw2D(d); }
     if(b.id==='m2B'){ const on=!(d.measure&&!d.calib); d.measure=on; d.calib=false; d.mpts=[]; enter2D(d); }
     if(b.id==='calB'){ d.calib=!d.calib; d.measure=d.calib; d.mpts=[]; enter2D(d); }
     if(b.id==='dxfB') saveDXF(d);
     if(b.id==='adB'){ d.adMode=$('adM').value; autoDim(d); }
-    if(b.id==='adX'){ clearAutoDim(d); enter2D(d); } };
+    if(b.id==='adX'){ clearAutoDim(d); enter2D(d); }
+    if(b.id==='mvB'){ d.moveMode=!d.moveMode; if(d.moveMode){ d.measure=false; d.calib=false; d.mpts=[]; } enter2D(d); } };
   const holes=summarizeHoles(d.circles);
   $('side').innerHTML=`<h3>외형 치수 (${d.unit})</h3>
     <table class="kv"><tr><td>가로</td><td>${f2(x1-x0)}</td></tr><tr><td>세로</td><td>${f2(y1-y0)}</td></tr><tr><td>원점 기준</td><td>X ${f2(x0)} ~ ${f2(x1)}<br>Y ${f2(y0)} ~ ${f2(y1)}</td></tr></table>
@@ -490,7 +492,7 @@ function enter2D(d){
   hint2(d); upMeas2(d);
 }
 function summarizeHoles(cs){ const m=new Map(); for(const c of cs){ const k=(Math.round(c.r*2*100)/100).toFixed(2); m.set(k,(m.get(k)||0)+1); } return [...m].map(([d,n])=>({d:+d,n})).sort((a,b)=>a.d-b.d); }
-function hint2(d){ $('hint').hidden=false; if(!d.measure&&!d.calib){ $('hint').textContent='끌기: 이동 · 휠: 확대/축소 · 자동 치수: 도면틀·등각도·기존 치수는 빼고 부품 뷰마다 KS 기준으로 붙임'; return; } if(d.calib){ $('hint').textContent='축척 맞추기: 길이를 아는 두 점(치수선 끝 등)을 차례로 클릭하세요'; return; } $('hint').textContent=d.measure?'두 점을 클릭하면 거리를 잽니다 (끝점·원 중심에 붙음) · 세 번째 클릭은 새로 시작':'끌기: 이동 · 휠: 확대/축소 · 원에 마우스를 올리면 지름 표시'; }
+function hint2(d){ $('hint').hidden=false; if(d.moveMode){ $('hint').textContent='뷰 이동: 뷰를 끌어다 놓으세요 · 측면도·평면도는 정면도와 가로/세로 줄을 맞춘 채 움직이고, 따로 떨어진 블록은 자유 이동 (Shift: 자유 이동) · 자동 치수는 놓을 때 다시 붙음'; return; } if(!d.measure&&!d.calib){ $('hint').textContent='끌기: 이동 · 휠: 확대/축소 · 자동 치수: 도면틀·등각도·기존 치수는 빼고 부품 뷰마다 KS 기준으로 붙임'; return; } if(d.calib){ $('hint').textContent='축척 맞추기: 길이를 아는 두 점(치수선 끝 등)을 차례로 클릭하세요'; return; } $('hint').textContent=d.measure?'두 점을 클릭하면 거리를 잽니다 (끝점·원 중심에 붙음) · 세 번째 클릭은 새로 시작':'끌기: 이동 · 휠: 확대/축소 · 원에 마우스를 올리면 지름 표시'; }
 function upMeas2(d){ const m=$('meas'); if(!m) return; if(d.mpts.length===2){ const [a,b]=d.mpts; const dx=b[0]-a[0], dy=b[1]-a[1];
     m.innerHTML=`거리 <b>${f2(Math.hypot(dx,dy))}</b> ${d.unit}<br>가로 ${f2(Math.abs(dx))} · 세로 ${f2(Math.abs(dy))} · 각도 ${f2(Math.atan2(dy,dx)*180/Math.PI)}°`; }
   else if(d.measure) m.textContent=d.mpts.length?'두 번째 점을 클릭하세요.':'첫 번째 점을 클릭하세요.'; }
@@ -498,15 +500,47 @@ function snap2(d,sx,sy){ let best=null, bd=10; const on=new Map(d.layers.map(l=>
   for(const [p,layer] of d.verts){ if(!on.get(layer)) continue; const q=W2S(d,p[0],p[1]); const dd=Math.hypot(q[0]-sx,q[1]-sy); if(dd<bd){bd=dd;best=p;} } return best; }
 function circleAt(d,sx,sy){ const [wx,wy]=S2W(d,sx,sy); const on=new Map(d.layers.map(l=>[l.name,l.on])); let best=null, bd=6;
   for(const c of d.circles){ if(!on.get(c.layer)) continue; const dd=Math.abs(Math.hypot(wx-c.x,wy-c.y)-c.r)*d.view.s; if(dd<bd){bd=dd;best=c;} } return best; }
+// pick the part view under a point and everything that belongs to it (lines, circles, texts, dims, centre lines)
+function pickView(d,wx,wy){
+  const on=new Map(d.layers.map(l=>[l.name,l.on]));
+  const geo=d.items.filter(it=>it.k==='p'&&!it.dim&&it.layer!==AD&&on.get(it.layer)&&it.pts.length);
+  if(!geo.length) return null; const {views,frameItems}=findViews(geo);
+  const hit=views.filter(v=>{ const m=Math.max(v.x1-v.x0,v.y1-v.y0)*0.03; return wx>=v.x0-m&&wx<=v.x1+m&&wy>=v.y0-m&&wy<=v.y1+m; }).sort((a,b)=>(a.x1-a.x0)*(a.y1-a.y0)-(b.x1-b.x0)*(b.y1-b.y0))[0];
+  if(!hit) return null;
+  const m=Math.max(2,Math.max(hit.x1-hit.x0,hit.y1-hit.y0)*0.12), X0=hit.x0-m, X1=hit.x1+m, Y0=hit.y0-m, Y1=hit.y1+m, inb=q=>q[0]>=X0&&q[0]<=X1&&q[1]>=Y0&&q[1]<=Y1;
+  const mt=Math.max(hit.x1-hit.x0,hit.y1-hit.y0)*0.25, inbT=q=>q[0]>=hit.x0-mt&&q[0]<=hit.x1+mt&&q[1]>=hit.y0-mt&&q[1]<=hit.y1+mt; // view labels such as "단면 A-A" sit a little further out
+  const own=new Set(hit.items), items=d.items.filter(it=>it.layer!==AD&&!frameItems.has(it)&&(own.has(it)||(it.k==='t'?inbT([it.x,it.y]):it.pts&&it.pts.length&&it.pts.every(inb))));
+  const circ=new Set(d.circles.filter(c=>inb([c.x,c.y])));
+  // projected views (side view next to the front view, top view above it) slide only along their projection line; a lone block moves freely
+  const ov=(a0,a1,b0,b1)=>Math.max(0,Math.min(a1,b1)-Math.max(a0,b0))/Math.max(1e-9,Math.min(a1-a0,b1-b0));
+  const others=views.filter(v=>v!==hit), hA=others.some(v=>ov(hit.y0,hit.y1,v.y0,v.y1)>0.5), vA=others.some(v=>ov(hit.x0,hit.x1,v.x0,v.x1)>0.5);
+  const axis=hA&&!vA?'x':vA&&!hA?'y':hA&&vA?'auto':null;
+  return {axis, items, circ, arcs:(d.arcs||[]).filter(a=>inb(a.mid)), segs:(d.segs||[]).filter(s=>inb(s[0])&&inb(s[1])), verts:d.verts.filter(v=>inb(v[0])), box:[hit.x0,hit.y0,hit.x1,hit.y1]};
+}
+function moveGroup(g,dx,dy){
+  const t=q=>[q[0]+dx,q[1]+dy];
+  for(const it of g.items){ if(it.k==='t'){ it.x+=dx; it.y+=dy; } else if(it.pts) it.pts=it.pts.map(t); }
+  for(const c of g.circ){ c.x+=dx; c.y+=dy; }
+  for(const a of g.arcs){ a.x+=dx; a.y+=dy; a.mid=t(a.mid); }
+  for(const s of g.segs){ s[0]=t(s[0]); s[1]=t(s[1]); }
+  for(const v of g.verts) v[0]=t(v[0]);
+  g.box=[g.box[0]+dx,g.box[1]+dy,g.box[2]+dx,g.box[3]+dy];
+}
 (function(){
   let drag=null, moved=false;
-  cv2.addEventListener('pointerdown',e=>{ if(!cur||cur.kind!=='2d') return; drag={x:e.clientX,y:e.clientY,cx:cur.view.cx,cy:cur.view.cy}; moved=false; cv2.setPointerCapture(e.pointerId); });
+  cv2.addEventListener('pointerdown',e=>{ if(!cur||cur.kind!=='2d') return; drag={x:e.clientX,y:e.clientY,cx:cur.view.cx,cy:cur.view.cy}; moved=false; cv2.setPointerCapture(e.pointerId);
+    if(cur.moveMode){ const r=cv2.getBoundingClientRect(); const [wx,wy]=S2W(cur,e.clientX-r.left,e.clientY-r.top); drag.g=pickView(cur,wx,wy); drag.lx=e.clientX; drag.ly=e.clientY; if(drag.g){ cur.moveBox=drag.g.box; draw2D(cur); } } });
   cv2.addEventListener('pointermove',e=>{ if(!cur||cur.kind!=='2d') return; const d=cur; const r=cv2.getBoundingClientRect(), sx=e.clientX-r.left, sy=e.clientY-r.top;
+    if(drag&&drag.g){ const dx=e.clientX-drag.x, dy=e.clientY-drag.y; if(Math.hypot(dx,dy)>3) moved=true;
+      if(moved){ const g=drag.g; let tx=dx/d.view.s, ty=-dy/d.view.s; let ax=e.shiftKey?null:g.axis; if(ax==='auto') ax=Math.abs(tx)>=Math.abs(ty)?'x':'y';
+        if(ax==='x') ty=0; else if(ax==='y') tx=0; const ap=g.applied||[0,0]; moveGroup(g,tx-ap[0],ty-ap[1]); g.applied=[tx,ty]; d.moveBox=g.box; draw2D(d); } return; }
     if(drag){ const dx=e.clientX-drag.x, dy=e.clientY-drag.y; if(Math.hypot(dx,dy)>3) moved=true; if(moved){ d.view.cx=drag.cx-dx/d.view.s; d.view.cy=drag.cy+dy/d.view.s; d.hover=null; $('tip').hidden=true; draw2D(d); return; } }
     const snap=d.measure?snap2(d,sx,sy):null; const circle=circleAt(d,sx,sy); d.hover={snap,circle};
     const tip=$('tip'); if(circle){ tip.hidden=false; tip.textContent=`Ø ${f2(circle.r*2)}  ·  중심 (${f2(circle.x)}, ${f2(circle.y)})`; tip.style.left=(sx+14)+'px'; tip.style.top=(sy+12)+'px'; } else tip.hidden=true;
     draw2D(d); });
-  cv2.addEventListener('pointerup',e=>{ if(!cur||cur.kind!=='2d'){drag=null;return;} const d=cur; const wasDrag=moved; drag=null; if(wasDrag||!d.measure) return;
+  cv2.addEventListener('pointerup',e=>{ if(!cur||cur.kind!=='2d'){drag=null;return;} const d=cur; const wasDrag=moved, g=drag&&drag.g; drag=null;
+    if(g){ d.moveBox=null; if(wasDrag&&d.layers.some(l=>l.name===AD)){ d.adMode=$('adM').value; autoDim(d); } else draw2D(d); return; }
+    if(wasDrag||!d.measure) return;
     const r=cv2.getBoundingClientRect(), sx=e.clientX-r.left, sy=e.clientY-r.top; const p=snap2(d,sx,sy)||S2W(d,sx,sy);
     if(d.mpts.length>=2) d.mpts=[]; d.mpts.push(p); upMeas2(d); draw2D(d);
     if(d.calib&&d.mpts.length===2) setTimeout(()=>calibrate(d),30); });
@@ -637,16 +671,16 @@ function findViews(geo){
   const big=Math.max(0,...top.map(c=>Math.max(c.x1-c.x0,c.y1-c.y0)));
   const ortho=c=>{ const sz=Math.max(c.x1-c.x0,c.y1-c.y0); let ax=0, all=0; for(const it of c.items){ const P=it.closed?[...it.pts,it.pts[0]]:it.pts; for(let i=0;i+1<P.length;i++){ const dx=P[i+1][0]-P[i][0], dy=P[i+1][1]-P[i][1], l=Math.hypot(dx,dy); if(l<sz*0.03) continue; all+=l; if(Math.abs(dx)<l*0.02||Math.abs(dy)<l*0.02) ax+=l; } } return all===0||ax>=all*0.6; };
   let views=top.filter(c=>Math.max(c.x1-c.x0,c.y1-c.y0)>=big*0.08&&!isCircle(c)&&ortho(c));
-  // a frame we found: drop leftover groups touching its title block (bottom-right) region or lying in its border strip
-  for(const f of frames){ const m=Math.min(f.x1-f.x0,f.y1-f.y0)*0.06; views=views.filter(v=>!(inside(v,f)&&(v.x0<f.x0+m||v.x1>f.x1-m||v.y0<f.y0+m||v.y1>f.y1-m))||!inside(v,f)); }
-  return {views, frames:frames.length, frameW:frames.length?Math.max(...frames.map(f=>f.x1-f.x0)):0};
+  return {views, frameItems:new Set(frames.flatMap(f=>f.items)), frames:frames.length, frameW:frames.length?Math.max(...frames.map(f=>f.x1-f.x0)):0};
 }
 function autoDim(d){
   clearAutoDim(d);
   const r=stage.getBoundingClientRect(); const [vx0,vy1]=S2W(d,0,0), [vx1,vy0]=S2W(d,r.width,r.height);
   const inV=(p)=>p[0]>=vx0&&p[0]<=vx1&&p[1]>=vy0&&p[1]<=vy1;
   const on=new Map(d.layers.map(l=>[l.name,l.on]));
-  const geo=d.items.filter(it=>it.k==='p'&&!it.dim&&on.get(it.layer)&&it.pts.length&&it.pts.every(inV));
+  // centre lines, pitch circles and hidden lines are not part outline
+  const CL=/중심|center|centre|^cl$|^cen|hidden|숨은|가상|phantom/i;
+  const geo=d.items.filter(it=>it.k==='p'&&!it.dim&&on.get(it.layer)&&!CL.test(it.layer)&&it.pts.length&&it.pts.every(inV));
   if(!geo.length){ toast('화면 안에 온전히 보이는 부품 선이 없습니다. 치수를 붙일 부품을 확대해서 화면에 맞춘 뒤 누르세요.'); return; }
   const {views,frames,frameW}=findViews(geo);
   if(!views.length){ toast('도면틀 안에서 부품 뷰를 찾지 못했습니다. 부품만 화면에 보이게 확대한 뒤 다시 눌러 주세요.'); return; }
@@ -669,15 +703,37 @@ function autoDim(d){
   let nH=0,nF=0,nC=0;
   for(const v of views){ const {x0,y0,x1,y1}=v, W=x1-x0, H=y1-y0, eps=Math.max(W,H)*1e-3;
     const inB=p=>p[0]>=x0-eps&&p[0]<=x1+eps&&p[1]>=y0-eps&&p[1]<=y1+eps;
+    // round part seen along its axis: diameters through the centre and holes on a pitch circle (P.C.D) instead of box dimensions
+    const cIn=d.circles.filter(c=>on.get(c.layer)&&!CL.test(c.layer)&&inB([c.x,c.y])&&inV([c.x,c.y]));
+    const O=cIn.reduce((a,c)=>(!a||c.r>a.r?c:a),null);
+    if(O&&(2*O.r>=Math.max(W,H)*0.8||2*O.r>=W*0.97||2*O.r>=H*0.97)){
+      const ce=Math.max(eps,O.r*0.01), seen=[], conc=[];
+      for(const c of cIn.filter(c=>Math.hypot(c.x-O.x,c.y-O.y)<ce&&c.r>=O.r*0.15).sort((a,b)=>b.r-a.r)) if(!seen.some(r=>Math.abs(r-c.r)<Math.max(0.3,O.r*0.015))){ seen.push(c.r); conc.push(c); }
+      conc.slice(0,4).forEach((c,i)=>{ const a=[0.6,0.95,0.3,1.25][i], u=[Math.cos(a),Math.sin(a)]; const p1=[c.x+u[0]*c.r,c.y+u[1]*c.r], p2=[c.x-u[0]*c.r,c.y-u[1]*c.r];
+        const ext=(O.r-c.r)+h*1.6, kn=[p1[0]+u[0]*ext,p1[1]+u[1]*ext], tail=[kn[0]+h*1.2,kn[1]];
+        L([p2,p1]); L([p1,kn,tail]); arrow(p1,[-u[0],-u[1]]); arrow(p2,u); T(tail[0]+h*0.2,tail[1]+h*0.15,'Ø'+fmtN(2*c.r),0,7); });
+      const hs=cIn.filter(c=>Math.hypot(c.x-O.x,c.y-O.y)>=ce&&c.r<O.r*0.5); nH+=hs.length;
+      const groups=new Map(); for(const c of hs){ const k=(Math.round(c.r*200)/100).toFixed(2); (groups.get(k)||groups.set(k,[]).get(k)).push(c); }
+      const co=[];
+      for(const [k,cs] of groups){ const txt=(cs.length>1?cs.length+'×':'')+'Ø'+fmtN(+k); let hit=null;
+        for(const c of cs){ hit=co.find(o=>Math.hypot(o.c.x-c.x,o.c.y-c.y)<eps*3); if(hit) break; }
+        const ds=cs.map(c=>Math.hypot(c.x-O.x,c.y-O.y)), pcd=cs.length>=2&&Math.max(...ds)-Math.min(...ds)<Math.max(0.05,O.r*0.005)?ds[0]*2:0;
+        if(hit){ hit.lines.push(txt); if(!hit.pcd) hit.pcd=pcd; const m=cs.find(c=>Math.hypot(hit.c.x-c.x,hit.c.y-c.y)<eps*3); if(m&&m.r>hit.c.r) hit.c={...hit.c,r:m.r}; }
+        else co.push({c:cs.reduce((a,b)=>(b.x+b.y<a.x+a.y?b:a)),lines:[txt],pcd}); }
+      co.forEach((o,gi)=>{ if(o.pcd) o.lines.push('P.C.D Ø'+fmtN(o.pcd)); const c=o.c, ux=c.x>=O.x?1:-1, uy=c.y>=O.y?1:-1, ang=Math.atan2(uy,ux)+(gi%2?0.3:-0.3)*ux*uy;
+        const ex=[c.x+c.r*Math.cos(ang),c.y+c.r*Math.sin(ang)], kn=[c.x+(c.r+h*2.2)*Math.cos(ang),c.y+(c.r+h*2.2)*Math.sin(ang)+(uy>0?(o.lines.length-1)*h*1.4:0)], tail=[kn[0]+ux*h*1.2,kn[1]];
+        const tw=Math.max(...o.lines.map(t=>t.length))*h*0.62;
+        L([ex,kn,tail]); arrow(ex,[Math.cos(ang),Math.sin(ang)]); o.lines.forEach((t,i)=>T(ux>0?tail[0]+h*0.2:tail[0]-h*0.2-tw,tail[1]+h*0.15-i*h*1.4,t,0,7)); });
+      continue; }
     // 1) overall size: below and left
     // holes first so the overall size can sit outside the baseline stack (KS: smaller dimensions inside, larger outside)
-    const holes0=d.circles.filter(c=>on.get(c.layer)&&inB([c.x,c.y])&&inV([c.x,c.y])&&c.r*2<Math.min(W,H)*0.9);
+    const holes0=d.circles.filter(c=>on.get(c.layer)&&!CL.test(c.layer)&&inB([c.x,c.y])&&inV([c.x,c.y])&&c.r*2<Math.min(W,H)*0.9);
     const uq=(vals)=>{ const s=[...vals].sort((a,b)=>a-b), o=[]; for(const q of s) if(!o.length||Math.abs(q-o[o.length-1])>eps) o.push(q); return o; };
     const bx=part?[]:uq(holes0.map(c=>c.x)).filter(q=>q-x0>eps&&x1-q>eps), by=part?[]:uq(holes0.map(c=>c.y)).filter(q=>q-y0>eps&&y1-q>eps);
     if(W>eps) dimLin(x0,x1,'x',{from:y0,pos:y0-off1-bx.length*step,side:1});
     if(H>eps) dimLin(y0,y1,'y',{from:x0,pos:x0-off1-by.length*step,side:1});
     // 2) holes in this view
-    const holes=d.circles.filter(c=>on.get(c.layer)&&inB([c.x,c.y])&&inV([c.x,c.y])&&c.r*2<Math.min(W,H)*0.9); nH+=holes.length;
+    const holes=d.circles.filter(c=>on.get(c.layer)&&!CL.test(c.layer)&&inB([c.x,c.y])&&inV([c.x,c.y])&&c.r*2<Math.min(W,H)*0.9); nH+=holes.length;
     const uniq=(vals)=>{ const s=[...vals].sort((a,b)=>a-b), o=[]; for(const q of s) if(!o.length||Math.abs(q-o[o.length-1])>eps) o.push(q); return o; };
     if(holes.length){
       if(!part){ // finished product: mounting holes measured from the outline edge (bottom-left), stacked
@@ -697,11 +753,11 @@ function autoDim(d){
         L([ex,kn,tail]); arrow(ex,[Math.cos(ang),Math.sin(ang)]); o.lines.forEach((t,i)=>T(tail[0]+h*0.2,tail[1]+h*0.15-i*h*1.4,t,0,7)); }); }
     if(!part) continue;
     // 3) fillets (arcs) and chamfers (45° short edges) of this view
-    const arcsIn=(d.arcs||[]).filter(a=>on.get(a.layer)&&inB(a.mid)&&inV(a.mid)&&a.r<Math.min(W,H)*0.5&&!d.circles.some(c=>Math.abs(c.x-a.x)<eps&&Math.abs(c.y-a.y)<eps&&Math.abs(c.r-a.r)<eps)); nF+=arcsIn.length;
+    const arcsIn=(d.arcs||[]).filter(a=>on.get(a.layer)&&inB(a.mid)&&inV(a.mid)&&a.r>=0.3&&a.r<=Math.min(W,H)*0.2&&(a.sw==null||a.sw<=Math.PI*0.56)&&!d.circles.some(c=>Math.abs(c.x-a.x)<eps&&Math.abs(c.y-a.y)<eps&&Math.abs(c.r-a.r)<eps)); nF+=arcsIn.length;
     const rg=new Map(); for(const a of arcsIn){ const k=fmtN(a.r); (rg.get(k)||rg.set(k,[]).get(k)).push(a); }
     for(const [k,as] of rg){ const a=as[0]; const ux=(a.mid[0]-a.x)/(a.r||1), uy=(a.mid[1]-a.y)/(a.r||1); const kn=[a.mid[0]+ux*h*1.8,a.mid[1]+uy*h*1.8], tail=[kn[0]+(ux>=0?h*1.2:-h*1.2),kn[1]];
       L([a.mid,kn,tail]); arrow(a.mid,[ux,uy]); T(ux>=0?tail[0]+h*0.2:tail[0]-h*0.2-h*0.6*((as.length>1?3:0)+1+k.length),tail[1]+h*0.15,(as.length>1?as.length+'×':'')+'R'+k,0,7); }
-    const chams=(d.segs||[]).filter(([p,q,l])=>{ if(!on.get(l)||!inB(p)||!inB(q)||!inV(p)||!inV(q)) return false; const dx=q[0]-p[0], dy=q[1]-p[1], len=Math.hypot(dx,dy); if(len<=1e-6||len>Math.min(W,H)*0.25) return false;
+    const chams=(d.segs||[]).filter(([p,q,l])=>{ if(!on.get(l)||!inB(p)||!inB(q)||!inV(p)||!inV(q)) return false; const dx=q[0]-p[0], dy=q[1]-p[1], len=Math.hypot(dx,dy); if(len<=1e-6||len>Math.min(W,H)*0.25||len/Math.SQRT2<Math.max(0.3,Math.max(W,H)*0.005)) return false;
         const ang=Math.abs(Math.atan2(dy,dx)*180/Math.PI)%90; return Math.abs(ang-45)<1.5; }); nC+=chams.length;
     const cg=new Map(); for(const [p,q] of chams){ const k=fmtN(Math.abs(q[0]-p[0])); (cg.get(k)||cg.set(k,[]).get(k)).push([p,q]); }
     for(const [k,cs] of cg){ const [p,q]=cs[0]; const m=[(p[0]+q[0])/2,(p[1]+q[1])/2]; const cx=(x0+x1)/2, cy=(y0+y1)/2; const ux=Math.sign(m[0]-cx)||1, uy=Math.sign(m[1]-cy)||1;
