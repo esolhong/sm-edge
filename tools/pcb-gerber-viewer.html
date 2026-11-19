@@ -196,7 +196,7 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
     <div><h2>부품 좌표</h2>
       <div class="row"><select id="boardSel"></select><select id="sideSel"><option value="">양면</option><option value="TOP">TOP</option><option value="BOTTOM">BOTTOM</option></select><select id="typeSel"><option value="">SMD + DIP</option><option value="SMD">SMD만</option><option value="DIP">DIP만 (LED 홀)</option></select>
       <label class="row" style="gap:4px;font-size:12.5px"><input type="checkbox" id="mirrorBot"> BOTTOM X 미러</label>
-      <button id="flipBoardBtn" disabled title="고른 보드의 거버를 위아래로 뒤집습니다: TOP↔BOTTOM 레이어 교체 + 좌우 미러 (드릴·외곽도 미러)">이 보드 위아래 뒤집기</button><button id="rotBoardBtn" disabled title="고른 보드를 보드 중심으로 180° 돌립니다. 보드 자르는 선도 같이 돌고, 자삽바 쪽 탭·재봉선은 그대로 둡니다">이 보드 180° 회전</button></div>
+      <button id="flipBoardBtn" disabled title="고른 보드의 거버를 위아래로 뒤집습니다: TOP↔BOTTOM 레이어 교체 + 좌우 미러 (드릴·외곽도 미러, 자삽바에 붙은 홀·재봉선은 그대로)">이 보드 위아래 뒤집기</button><button id="rotBoardBtn" disabled title="고른 보드를 보드 중심으로 180° 돌립니다. 보드 자르는 선도 같이 돌고, 자삽바 쪽 탭·재봉선은 그대로 둡니다. 보드 가장자리에서 자삽바에 붙은 홀과 5개 이상 연달아 있는 홀(재봉선)은 움직이지 않습니다">이 보드 180° 회전</button></div>
       <p class="note" id="partsNote" style="margin-top:6px"></p>
       <div id="typeList" hidden></div></div>
     <div id="editor" hidden>
@@ -1179,15 +1179,32 @@ function gRot180(F,cx,cy){ const m=([x,y])=>[2*cx-x,2*cy-y], ap=a=>a[0]==='O'?['
   return {lines:F.lines.map(l=>({ap:ap(l.ap),pts:l.pts.map(m)})),flashes:F.flashes.map(f=>({ap:ap(f.ap),x:2*cx-f.x,y:2*cy-f.y})),regions:F.regions.map(g=>g.map((v,i)=>i%2?2*cy-v:2*cx-v))}; }
 function rotComps(b,id,cx,cy){ if(b.comps) for(const c of b.comps){ if(c.board!==id) continue; c.pads=c.pads.map(p=>[2*cx-p[0],2*cy-p[1],p[2],p[3],p[4]]); if(c.rot!=null) c.rot=((c.rot+180)%360+360)%360; finishComp(c); } }
 // turn one board 180° about its centre, its own cut line included; tabs and rail routing outside the board stay put
+// drill holes that hold the board to the rail: holes on the board edge whose outside is not another board, and runs of 5+ closely spaced holes (perforation). They and whatever sits on them never move.
+function fixedHoles(b,id,R){ const g=b.regions.find(g=>g.id===id), src=b.layers.drill&&silkFile(b,'drill')?'drill':(b.layers.drill_dwg&&silkFile(b,'drill_dwg')?'drill_dwg':null); if(!src) return [];
+  const H=gGrab(b,src,R).flashes.filter(f=>f.ap[0]==='C'&&f.ap[1]>0).map(f=>({x:f.x,y:f.y,r:f.ap[1]/2})), t=0.3/MM, out=new Set();
+  const inOther=(x,y)=>b.regions.some(o=>o.id!==id&&x>=o.x0&&x<=o.x1&&y>=o.y0&&y<=o.y1);
+  for(const h of H){ const d=[[h.x-g.x0,-1,0],[g.x1-h.x,1,0],[h.y-g.y0,0,-1],[g.y1-h.y,0,1]].sort((p,q)=>p[0]-q[0])[0]; if(d[0]>h.r+t) continue;
+    const k=h.r+1/MM; if(!inOther(h.x+d[1]*(d[0]+k),h.y+d[2]*(d[0]+k))) out.add(h); }
+  const seen=new Set(); for(const h of H){ if(seen.has(h)) continue; const grp=[h]; seen.add(h);
+    for(let i=0;i<grp.length;i++){ const a=grp[i]; for(const c of H){ if(seen.has(c)||Math.abs(c.r-a.r)>1) continue; if(Math.hypot(c.x-a.x,c.y-a.y)-a.r-c.r<=0.6/MM){ seen.add(c); grp.push(c); } } }
+    if(grp.length>=5) for(const c of grp) out.add(c); }
+  return [...out]; }
+function splitFixed(F,H){ if(!H.length) return [F,{lines:[],flashes:[],regions:[]}]; const near=(x,y,tl)=>H.some(h=>Math.hypot(x-h.x,y-h.y)<=h.r+tl), tf=0.3/MM, tl=1/MM, mv={lines:[],flashes:[],regions:[]}, kp={lines:[],flashes:[],regions:[]};
+  for(const l of F.lines) (l.pts.every(([x,y])=>near(x,y,tl))?kp:mv).lines.push(l);
+  for(const f of F.flashes) (near(f.x,f.y,tf)?kp:mv).flashes.push(f);
+  for(const r of F.regions){ let ok=true; for(let i=0;i+1<r.length;i+=2) if(!near(r[i],r[i+1],tl)){ ok=false; break; } (ok?kp:mv).regions.push(r); }
+  return [mv,kp]; }
+const fMerge=(a,c)=>({lines:a.lines.concat(c.lines),flashes:a.flashes.concat(c.flashes),regions:a.regions.concat(c.regions)});
 function rotateBoardGerber(b,id){ const g=b.regions&&b.regions.find(g=>g.id===id); if(!g) return {ok:false,msg:'보드 외곽을 찾지 못했습니다'};
   if(b.fmt) return {ok:false,msg:'ODB++·IPC 보드는 거버 회전을 지원하지 않습니다'};
   const e=0.25/MM, R=[g.x0-e,g.y0-e,g.x1+e,g.y1+e], cx=(g.x0+g.x1)/2, cy=(g.y0+g.y1)/2, skipped=[], plan=[];
   for(const r of [...FLIP_PAIRS.flat(),'outline','drill','drill_dwg']){ if(!b.layers[r]) continue; if(!silkFile(b,r)){ skipped.push(ROLES[r][0]); continue; } plan.push(r); }
   if(!plan.length) return {ok:false,msg:'돌릴 수 있는 거버 레이어가 없습니다'};
-  const grp='rot'+Date.now();
-  for(const r of plan){ const F=gGrab(b,r,R); silkState(b,r); b.silk.ops.push({t:'erase',role:r,rects:[R],grp}); b.silk.ops.push({t:'feat',role:r,feats:gRot180(F,cx,cy),grp,rot:id}); silkRebuild(b,r); }
+  const grp='rot'+Date.now(), H=fixedHoles(b,id,R), FS={};
+  for(const r of plan){ const [mv,kp]=splitFixed(gGrab(b,r,R),H); FS[r]=fMerge(gRot180(mv,cx,cy),kp); }
+  for(const r of plan){ silkState(b,r); b.silk.ops.push({t:'erase',role:r,rects:[R],grp}); b.silk.ops.push({t:'feat',role:r,feats:FS[r],grp,rot:id}); silkRebuild(b,r); }
   rotComps(b,id,cx,cy); const t=b.rotated||{}; t[id]=((t[id]||0)+1)%2; b.rotated=t; b._tc=null;
-  return {ok:true,n:plan.length,skipped}; }
+  return {ok:true,n:plan.length,skipped,fixed:H.length}; }
 // features of one layer wholly inside a box, read from the file itself (same rule the eraser uses)
 function gGrab(b,src,R){ silkState(b,src); const k=silkFile(b,src), s=src==='drill'&&b.silk.shift||[0,0], Rf=[R[0]-s[0],R[1]-s[1],R[2]-s[0],R[3]-s[1]];
   const E=silkErase(new TextDecoder('latin1').decode(b.files[k]),[Rf]).feats, A=b.layers[src].aps, sh=([x,y])=>[x+s[0],y+s[1]];
@@ -1199,14 +1216,15 @@ function flipBoardGerber(b,id){ const g=b.regions&&b.regions.find(g=>g.id===id);
     if(!(ha&&hc)||!silkFile(b,a)||!silkFile(b,c)){ skipped.push(ROLES[ha?a:c][0]); continue; } plan.push([a,c],[c,a]); }
   for(const r of FLIP_SELF){ if(!b.layers[r]) continue; if(!silkFile(b,r)){ skipped.push(ROLES[r][0]); continue; } plan.push([r,r]); }
   if(!plan.length) return {ok:false,msg:'뒤집을 수 있는 거버 레이어가 없습니다'};
-  const feats={}; for(const [dst,src] of plan){ silkState(b,src); const k=silkFile(b,src), s=src==='drill'&&b.silk.shift||[0,0], Rf=[R[0]-s[0],R[1]-s[1],R[2]-s[0],R[3]-s[1]];
+  const feats={}, kept={}, H=fixedHoles(b,id,R); for(const [dst,src] of plan){ silkState(b,src); const k=silkFile(b,src), s=src==='drill'&&b.silk.shift||[0,0], Rf=[R[0]-s[0],R[1]-s[1],R[2]-s[0],R[3]-s[1]];
     const E=silkErase(new TextDecoder('latin1').decode(b.files[k]),[Rf]).feats, A=b.layers[src].aps, sh=([x,y])=>[x+s[0],y+s[1]];
     const F={lines:E.lines.filter(l=>A[l.ap]).map(l=>({ap:A[l.ap],pts:l.pts.map(sh)})),flashes:E.flashes.filter(f=>A[f.ap]).map(f=>({ap:A[f.ap],x:f.x+s[0],y:f.y+s[1]})),regions:E.regions.map(r=>r.map((v,i)=>v+(i%2?s[1]:s[0])))};
-    feats[dst]=gMirror(F,cx); }
+    const [mv]=splitFixed(F,H); feats[dst]=gMirror(mv,cx); kept[src]=splitFixed(F,H)[1]; }
+  for(const [dst] of plan) feats[dst]=fMerge(feats[dst],kept[dst]||{lines:[],flashes:[],regions:[]});
   const grp='flip'+Date.now(); for(const [dst] of plan){ silkState(b,dst); b.silk.ops.push({t:'erase',role:dst,rects:[R],grp}); b.silk.ops.push({t:'feat',role:dst,feats:feats[dst],grp,flip:id}); silkRebuild(b,dst); }
   if(b.comps) for(const c of b.comps){ if(c.board!==id) continue; c.pads=c.pads.map(p=>[2*cx-p[0],p[1],p[2],p[3],p[4]]); c.side=c.side==='TOP'?'BOTTOM':'TOP'; if(c.rot!=null) c.rot=((540-c.rot)%360+360)%360; finishComp(c); }
   const f=new Set(b.flipped||[]); f.has(id)?f.delete(id):f.add(id); b.flipped=[...f].sort((x,y)=>x-y); b._tc=null;
-  return {ok:true,n:plan.length,skipped}; }
+  return {ok:true,n:plan.length,skipped,fixed:H.length}; }
 // copies of a box on the other identical boards of the array
 function silkCopies(b,r){ const all=$('silkAll').checked&&b.regions&&b.regions.length>1; if(!all) return [[0,0]];
   const cx=(r[0]+r[2])/2, cy=(r[1]+r[3])/2, me=b.regions.find(g=>cx>=g.x0&&cx<=g.x1&&cy>=g.y0&&cy<=g.y1); if(!me) return [[0,0]]; const tol=0.5/MM;
@@ -1462,10 +1480,10 @@ $('typeZipBtn').onclick=async()=>{ const b=B(), T=boardTypes(b); if(!b||!b.comps
   saveFile(b.name+'_종류별_파트리스트.zip',await zip.generateAsync({type:'blob',compression:'DEFLATE'})); };
 $('rotBoardBtn').onclick=()=>{const b=B(), id=+$('boardSel').value; if(!b||!id) return; const r=rotateBoardGerber(b,id); if(!r.ok){ toast(r.msg); return; }
   sel.clear(); buildLayers(); boardOptions(); updateEditor(); renderTable(); silkUI(); draw();
-  toast(`보드 ${id}를 180° 돌렸습니다 (레이어 ${r.n}개, 자르는 선 포함 · 탭·재봉선은 그대로)`+(r.skipped.length?` · 그대로 둔 레이어: ${r.skipped.join(', ')}`:'')+'. 저장 ▾ → 수정한 거버 ZIP');};
+  toast(`보드 ${id}를 180° 돌렸습니다 (레이어 ${r.n}개, 자르는 선 포함 · 자삽바 쪽 탭·재봉선${r.fixed?' 홀 '+r.fixed+'개':''}는 그대로)`+(r.skipped.length?` · 그대로 둔 레이어: ${r.skipped.join(', ')}`:'')+'. 저장 ▾ → 수정한 거버 ZIP');};
 $('flipBoardBtn').onclick=()=>{const b=B(), id=+$('boardSel').value; if(!b||!id) return; const r=flipBoardGerber(b,id); if(!r.ok){ toast(r.msg); return; }
   sel.clear(); buildLayers(); boardOptions(); updateEditor(); renderTable(); silkUI(); draw();
-  toast(`보드 ${id}의 거버를 위아래로 뒤집었습니다 (레이어 ${r.n}개)`+(r.skipped.length?` · 짝이 없어 그대로 둔 레이어: ${r.skipped.join(', ')}`:'')+'. 저장 ▾ → 수정한 거버 ZIP');}; $('sideSel').onchange=()=>{renderTable();draw();}; $('typeSel').onchange=()=>{renderTable();draw();}; $('mirrorBot').onchange=renderTable;
+  toast(`보드 ${id}의 거버를 위아래로 뒤집었습니다 (레이어 ${r.n}개${r.fixed?' · 자삽바에 붙은 홀 '+r.fixed+'개는 그대로':''})`+(r.skipped.length?` · 짝이 없어 그대로 둔 레이어: ${r.skipped.join(', ')}`:'')+'. 저장 ▾ → 수정한 거버 ZIP');}; $('sideSel').onchange=()=>{renderTable();draw();}; $('typeSel').onchange=()=>{renderTable();draw();}; $('mirrorBot').onchange=renderTable;
 $('originMode').onchange=e=>{const b=B(); b.originMode=e.target.value; if(b.originMode==='custom'&&!b.origin){picking=true;$('pickOrigin').setAttribute('aria-pressed','true');} syncOriginUI(); renderTable(); updateEditor(); draw();};
 $('pickOrigin').onclick=e=>{picking=!picking; e.target.setAttribute('aria-pressed',picking); if(picking) toast('마킹홀(센터)이나 외곽 모서리에 커서를 대면 노란 표시로 붙습니다. 클릭하면 ORG로 정해집니다.'); else {hoverSnap=null; draw();}};
 $('fit').onclick=fit;
