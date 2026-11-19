@@ -133,7 +133,7 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
         <button id="csvBtn" role="menuitem">파트리스트 CSV<small>레퍼런스 · 좌표 · 회전 · 값 · 마킹</small></button>
         <button id="typeZipBtn" role="menuitem" hidden>종류별 파트리스트 ZIP<small>여러 종류 어레이 · 종류마다 CSV 하나씩</small></button>
         <button id="copyBtn" role="menuitem">CSV 복사<small>엑셀에 바로 붙여넣기</small></button>
-        <button id="silkSave" role="menuitem">수정한 거버 ZIP<small>실크를 고친 거버 파일만 · 업체 전달용</small></button>
+        <button id="silkSave" role="menuitem">수정한 거버 ZIP<small>실크 수정·보드 뒤집기 반영 · 업체 전달용</small></button>
         <button id="saveAsBtn" role="menuitem">다른 이름으로 저장<small>고친 레퍼런스·값·마킹·원점까지 ZIP으로</small></button>
       </div></div>
     <input type="file" id="fileIn" multiple hidden>
@@ -159,6 +159,8 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
         <div class="row" style="font-size:12.5px"><label class="row" style="gap:4px">높이 <input id="silkH" type="number" step="0.1" min="0.3" value="1.2" style="width:62px"> mm</label>
           <select id="silkRot" title="글자 방향"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select>
           <label class="row" style="gap:4px" title="지운 글자 폭에 맞춰 가로를 늘이거나 줄입니다"><input type="checkbox" id="silkFit" checked> 지운 폭에 맞춤</label></div>
+        <div class="row" style="font-size:12.5px"><select id="silkFont" title="글꼴"><option value="bold">굵은 고딕</option><option value="normal">고딕</option><option value="line">가는 선 글꼴</option></select>
+          <label class="row" style="gap:4px" title="획 굵기. 영역을 지우면 지운 글자 굵기로 자동으로 맞춥니다">굵기 <input id="silkW" type="number" step="0.01" min="0.05" value="0.2" style="width:62px"> mm</label></div>
         <div class="row"><button id="silkAdd" class="primary">③ 글자 넣기</button><button id="silkPlace" aria-pressed="false" title="글자 왼쪽 아래 자리를 화면에서 클릭">위치 클릭</button></div>
         <div class="row"><button id="silkUndo">되돌리기</button><button id="silkReset">원래대로</button></div>
       </div>
@@ -187,7 +189,7 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
     <div><h2>부품 좌표</h2>
       <div class="row"><select id="boardSel"></select><select id="sideSel"><option value="">양면</option><option value="TOP">TOP</option><option value="BOTTOM">BOTTOM</option></select><select id="typeSel"><option value="">SMD + DIP</option><option value="SMD">SMD만</option><option value="DIP">DIP만 (LED 홀)</option></select>
       <label class="row" style="gap:4px;font-size:12.5px"><input type="checkbox" id="mirrorBot"> BOTTOM X 미러</label>
-      <button id="flipBoardBtn" disabled title="위에서 고른 보드의 부품만 TOP↔BOTTOM 실장면을 바꿉니다">이 보드 면 바꾸기</button></div>
+      <button id="flipBoardBtn" disabled title="고른 보드의 거버를 위아래로 뒤집습니다: TOP↔BOTTOM 레이어 교체 + 좌우 미러 (드릴·외곽도 미러)">이 보드 위아래 뒤집기</button></div>
       <p class="note" id="partsNote" style="margin-top:6px"></p>
       <div id="typeList" hidden></div></div>
     <div id="editor" hidden>
@@ -254,7 +256,7 @@ const MM=0.00254; // internal unit = 0.0001 inch
 const ROLES={
  top_cu:['TOP 동박','#d9a441'], bot_cu:['BOTTOM 동박','#4f8fd9'],
  top_mask:['TOP 솔더마스크 오픈','#46c47e'], bot_mask:['BOTTOM 솔더마스크 오픈','#2fa3a3'],
- top_silk:['TOP 실크','#f2f2f2'], bot_silk:['BOTTOM 실크','#c9a3f0'],
+ top_silk:['TOP 실크','#ffffff'], bot_silk:['BOTTOM 실크','#ffffff'],
  top_paste:['TOP 메탈마스크','#b0b0b0'], bot_paste:['BOTTOM 메탈마스크','#8a8a8a'],
  outline:['외곽·라우팅','#ff5a4e'], drill_dwg:['드릴 도면','#ffd84a'], drill:['NC 드릴 (홀)','#ff8ad8'], other:['기타','#7fd0ff']};
 const ORDER=['bot_cu','bot_mask','bot_paste','bot_silk','top_cu','top_mask','top_paste','top_silk','outline','drill_dwg','drill','other'];
@@ -917,7 +919,7 @@ function draw(){
       if(isSel){ for(const p of c.pads){const [px,py]=toScreen(p[0],p[1]); const w=p[2]/MM*view.s/2+2*dpr,h=p[3]/MM*view.s/2+2*dpr; ctx.strokeRect(px-w,py-h,2*w,2*h);} }
       if(mmpx<0.12||isSel){ ctx.fillStyle=c.refSrc==='auto'?'#ffb070':col; ctx.fillText(c.ref,sx+5*dpr,sy-7*dpr); }
     }}
-  drawRefMarks(b); drawSilk(b,dpr);
+  drawRefMarks(b); drawBoardPick(b,dpr); drawSilk(b,dpr);
   if((picking||(rfAlign&&rfAlign.step%2===1))&&hoverSnap){const [sx,sy]=toScreen(hoverSnap.x,hoverSnap.y), r=10*dpr; ctx.strokeStyle='#ffe600'; ctx.lineWidth=2*dpr;
     if(hoverSnap.t==='c'){ctx.beginPath();ctx.arc(sx,sy,r,0,7);ctx.stroke();ctx.beginPath();ctx.moveTo(sx-r*1.6,sy);ctx.lineTo(sx+r*1.6,sy);ctx.moveTo(sx,sy-r*1.6);ctx.lineTo(sx,sy+r*1.6);ctx.stroke();}
     else if(hoverSnap.t==='k'){ctx.strokeRect(sx-r,sy-r,2*r,2*r);ctx.beginPath();ctx.moveTo(sx-r*1.6,sy);ctx.lineTo(sx+r*1.6,sy);ctx.moveTo(sx,sy-r*1.6);ctx.lineTo(sx,sy+r*1.6);ctx.stroke();}
@@ -927,6 +929,17 @@ function draw(){
   if(b.originMode!=='board'&&o){const [sx,sy]=toScreen(o[0],o[1]), r=12*dpr; ctx.strokeStyle='#00e5ff'; ctx.lineWidth=1.5*dpr; ctx.beginPath(); ctx.moveTo(sx-r,sy);ctx.lineTo(sx+r,sy);ctx.moveTo(sx,sy-r);ctx.lineTo(sx,sy+r);ctx.stroke(); ctx.beginPath();ctx.arc(sx,sy,r*.5,0,7);ctx.stroke(); ctx.fillStyle='#00e5ff'; ctx.font=`${11*dpr}px "IBM Plex Mono",monospace`; ctx.fillText('ORG',sx+8*dpr,sy-10*dpr);}
   if(b.originMode==='board'&&b.regions){ for(const g of b.regions){const [sx,sy]=toScreen(g.x0,g.y0), r=9*dpr; ctx.strokeStyle='#00e5ff'; ctx.lineWidth=1.5*dpr; ctx.beginPath(); ctx.moveTo(sx,sy);ctx.lineTo(sx+(flip?-1:1)*r*1.6,sy);ctx.moveTo(sx,sy);ctx.lineTo(sx,sy-r*1.6);ctx.stroke(); ctx.fillStyle='#00e5ff'; ctx.fillText('보드'+g.id+((b.flipped||[]).includes(g.id)?' (면 바뀜)':''), sx+(flip?-40:6)*dpr, sy+9*dpr);} }
 }
+// the board picked in the board list: dim the rest, outline it (and its same-kind copies) in a bright colour
+function drawBoardPick(b,dpr){ const id=+($('boardSel').value||0); if(!id||!b.regions) return; const g=b.regions.find(g=>g.id===id); if(!g) return;
+  const box=r=>{ const [ax,ay]=toScreen(r.x0,r.y0), [cx,cy]=toScreen(r.x1,r.y1); return [Math.min(ax,cx),Math.min(ay,cy),Math.abs(cx-ax),Math.abs(cy-ay)]; };
+  const [x,y,w,h]=box(g); ctx.save(); ctx.fillStyle='rgba(0,0,0,.55)'; ctx.beginPath(); ctx.rect(0,0,cv.width,cv.height); ctx.rect(x,y,w,h); ctx.fill('evenodd');
+  const tk=typeOfBoard(b,id); ctx.setLineDash([8*dpr,5*dpr]); ctx.strokeStyle='#ffe600'; ctx.lineWidth=2*dpr;
+  for(const r of b.regions){ if(r.id===id||typeOfBoard(b,r.id)!==tk) continue; ctx.strokeRect(...box(r)); }
+  ctx.setLineDash([]); ctx.strokeStyle='#00ff9c'; ctx.lineWidth=4*dpr; ctx.strokeRect(x-2*dpr,y-2*dpr,w+4*dpr,h+4*dpr);
+  const t=boardTypes(b).find(t=>t.key===tk), lab='보드 '+id+(t&&boardTypes(b).length>1?' · '+typeLabel(t):''); ctx.font=`600 ${13*dpr}px "IBM Plex Sans KR",sans-serif`; const tw=ctx.measureText(lab).width;
+  ctx.fillStyle='#00ff9c'; ctx.fillRect(x-2*dpr,y-24*dpr,tw+14*dpr,22*dpr); ctx.fillStyle='#04140c'; ctx.fillText(lab,x+5*dpr,y-8*dpr); ctx.restore(); }
+function zoomBoard(b,id){ const g=b.regions&&b.regions.find(g=>g.id===id); if(!g) return; const W=cv.width,H=cv.height,pad=60*devicePixelRatio;
+  view.s=Math.min((W-2*pad)/(g.x1-g.x0),(H-2*pad)/(g.y1-g.y0)); view.tx=W/2-(flip?-1:1)*view.s*(g.x0+g.x1)/2; view.ty=H/2+view.s*(g.y0+g.y1)/2; draw(); }
 function resize(){const r=stage.getBoundingClientRect(), W0=cv.width, H0=cv.height, W=Math.max(1,r.width*devicePixelRatio), H=Math.max(1,r.height*devicePixelRatio); if(W===W0&&H===H0) return; cv.width=W; cv.height=H;
   if(resize.done&&B()){ view.tx+=(W-W0)/2; view.ty+=(H-H0)/2; draw(); } else { fit(); if(B()) resize.done=true; }}
 new ResizeObserver(resize).observe(stage);
@@ -1019,6 +1032,37 @@ function silkTextStrokes(text,x,y,h,rot,mirror,fitW){ const k=h/6, gap=1.6, out=
   const Wd=Math.max(1e-6,u-gap), sx=fitW?fitW/(Wd*k):1, a=(rot||0)*Math.PI/180, co=Math.cos(a), si=Math.sin(a);
   return out.map(pl=>pl.map(([a0,b0])=>{ let p=(mirror?Wd-a0:a0)*k*sx, q=b0*k; return [Math.round(x+p*co-q*si),Math.round(y+p*si+q*co)]; })); }
 function silkWidth(text,h){ let u=0; for(const ch of String(text).toUpperCase()){ const g=SFONT[ch]||SFONT['-']; u+=g[0]+1.6; } return Math.max(0,u-1.6)*h/6; }
+// ink stroke thickness of whatever is drawn inside a box (2·area/perimeter of the rendered ink), in board units
+function inkStroke(b,role,r){ const P=getPaths(b)[role]; if(!P) return 0; const w=r[2]-r[0], h=r[3]-r[1]; if(w<=0||h<=0) return 0;
+  const sc=Math.min(1600/w,1600/h,1/(0.005/MM)); const c=document.createElement('canvas'); c.width=Math.max(4,Math.ceil(w*sc)); c.height=Math.max(4,Math.ceil(h*sc)); const x=c.getContext('2d');
+  x.setTransform(sc,0,0,-sc,-r[0]*sc,r[3]*sc); x.strokeStyle='#fff'; x.fillStyle='#fff'; for(const s of P.strokes){ x.lineWidth=s.w; x.lineCap=s.cap; x.lineJoin='round'; x.stroke(s.p); } x.fill(P.fill,'nonzero');
+  const d=x.getImageData(0,0,c.width,c.height).data, W=c.width, H=c.height, on=(i,j)=>i>=0&&j>=0&&i<W&&j<H&&d[(j*W+i)*4]>127; let A=0,E=0;
+  for(let j=0;j<H;j++) for(let i=0;i<W;i++) if(on(i,j)){ A++; if(!on(i+1,j)||!on(i-1,j)||!on(i,j+1)||!on(i,j-1)) E++; }
+  return E?2*A/E/sc:0; }
+const FONT_CSS={bold:'bold {px}px Arial, "Helvetica Neue", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif',normal:'{px}px Arial, "Helvetica Neue", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif'};
+// filled text as horizontal hatch lines (how CAM tools plot TrueType text on silk); returns local polylines with origin at the left of the ink on the baseline
+function rasterText(text,font,h,strokeW){ const px=200, c=document.createElement('canvas'), x=c.getContext('2d'), css=FONT_CSS[font].replace('{px}',px);
+  x.font=css; const tw=Math.ceil(x.measureText(text).width)+60; c.width=tw; c.height=px*2; const base=Math.round(px*1.4);
+  const draw=(lw)=>{ x.setTransform(1,0,0,1,0,0); x.clearRect(0,0,c.width,c.height); x.font=css; x.fillStyle='#fff'; x.strokeStyle='#fff'; x.textBaseline='alphabetic'; x.lineJoin='round'; x.fillText(text,30,base); if(lw>0){ x.lineWidth=lw; x.strokeText(text,30,base); } };
+  draw(0); const capTop=(()=>{ const m=document.createElement('canvas').getContext('2d'); m.font=css; const t=m.measureText('H0'); return t.actualBoundingBoxAscent||px*0.72; })();
+  const k=h/capTop; // board units per pixel
+  const meas=()=>{ const d=x.getImageData(0,0,c.width,c.height).data, W=c.width, H=c.height, on=(i,j)=>i>=0&&j>=0&&i<W&&j<H&&d[(j*W+i)*4]>127; let A=0,E=0;
+    for(let j=0;j<H;j+=2) for(let i=0;i<W;i+=2) if(on(i,j)){ A++; if(!on(i+2,j)||!on(i-2,j)||!on(i,j+2)||!on(i,j-2)) E++; } return E?2*A/E*2:0; };
+  if(strokeW>0){ const own=meas(), want=strokeW/k; if(want>own+0.5){ draw(want-own); } }
+  const d=x.getImageData(0,0,c.width,c.height).data, W=c.width, H=c.height; let x0=W,x1=0,y0=H,y1=0;
+  for(let j=0;j<H;j++) for(let i=0;i<W;i++) if(d[(j*W+i)*4]>127){ if(i<x0)x0=i; if(i>x1)x1=i; if(j<y0)y0=j; if(j>y1)y1=j; }
+  if(x1<x0) return {polys:[],w:10,inkW:0};
+  const step=Math.max(1,Math.round((0.05/MM)/k)), ap=step*k*1.3, polys=[];
+  for(let j=y0+step/2;j<=y1;j+=step){ const jj=Math.round(j); let s=-1; for(let i=x0;i<=x1+1;i++){ const v=i<=x1&&d[(jj*W+i)*4]>127; if(v&&s<0) s=i; if(!v&&s>=0){ let a=(s-x0)*k+ap/2, bb=(i-x0)*k-ap/2; if(bb<a){ a=bb=((s+i)/2-x0)*k; } polys.push([[a,(base-jj)*k],[bb,(base-jj)*k]]); s=-1; } } }
+  return {polys,w:ap,inkW:(x1-x0+1)*k}; }
+// text geometry in board units: anchor = bottom-left, h = cap height, rot degrees, mirrored for bottom silk, optional total width
+function silkTextGeom(text,x,y,h,rot,mirror,fitW,font,strokeW){ let polys, w, Wd;
+  if(font==='line'){ const hc=Math.max(h-strokeW,h*0.5), k=hc/6, gap=1.6; polys=[]; let u=0; w=strokeW;
+    for(const [gw,st] of [...String(text).toUpperCase()].map(ch=>SFONT[ch]||SFONT['-'])){ for(const pl of st) polys.push(pl.map(([a,b])=>[(u+a)*k+w/2,b*k+w/2])); u+=gw+gap; }
+    Wd=Math.max(1e-6,(u-gap)*k+w); }
+  else { const R=rasterText(String(text),font,h,strokeW); polys=R.polys; w=R.w; Wd=Math.max(1e-6,R.inkW); }
+  const sx=fitW?fitW/Wd:1, a=(rot||0)*Math.PI/180, co=Math.cos(a), si=Math.sin(a);
+  return {w, polys:polys.map(pl=>pl.map(([u,v])=>{ const p=(mirror?Wd-u:u)*sx, q=v; return [Math.round(x+p*co-q*si),Math.round(y+p*si+q*co)]; }))}; }
 // coordinate codec that matches the parser exactly
 function silkCodec(txt){ const raw=txt.replace(/[\r\n]/g,''), X=/%FS/.test(raw), D0=/D0[123](?![0-9])/.test(raw)?'D0':'D';
   if(X){ const fs=raw.match(/%FS([LTD])?A?X(\d)(\d)Y\d\d/); const ip=fs?+fs[2]:2, dp=fs?+fs[3]:4, tr=!!(fs&&fs[1]==='T'), U=/%MOMM/.test(raw)?1e4/25.4:1e4;
@@ -1027,39 +1071,116 @@ function silkCodec(txt){ const raw=txt.replace(/[\r\n]/g,''), X=/%FS/.test(raw),
     return {X,D0,num,fmt}; }
   const unitInch=!/UNIT=(MM|METRIC)/i.test(raw), fm=raw.match(/FORM=(\d)\.(\d)/), dec=fm?+fm[2]:4, cs=(unitInch?1e4:1e4/25.4)/Math.pow(10,dec);
   return {X,D0,num:s=>+s*cs,fmt:v=>String(Math.round(v/cs))}; }
-// turn every draw (and flash) that lies wholly inside one of the boxes into a move; later modal draws get an explicit D01
-function silkErase(txt,rects){ const C=silkCodec(txt), inR=(x,y)=>rects.some(r=>x>=r[0]&&x<=r[2]&&y>=r[1]&&y<=r[3]);
-  const parts=txt.split('*'); let x=0,y=0,mode=C.X?1:2,fileMode=mode,pct=false,region=false,n=0,ap=null; const aps={}, bb=[1e18,1e18,-1e18,-1e18];
+// turn every draw / flash / region that lies wholly inside one of the boxes into a move; later modal draws get an explicit D01
+function silkErase(txt,rects){ if(isExcellonText(txt)) return xErase(txt,rects);
+  const C=silkCodec(txt), inR=(x,y)=>rects.some(r=>x>=r[0]&&x<=r[2]&&y>=r[1]&&y<=r[3]);
+  const parts=txt.split('*'); let x=0,y=0,mode=C.X?1:2,fileMode=mode,pct=false,region=null,n=0,ap=null,interp=1,multi=false; const aps={}, bb=[1e18,1e18,-1e18,-1e18], feats={lines:[],flashes:[],regions:[]};
+  const grow=(px,py)=>{ bb[0]=Math.min(bb[0],px); bb[1]=Math.min(bb[1],py); bb[2]=Math.max(bb[2],px); bb[3]=Math.max(bb[3],py); };
   for(let i=0;i<parts.length;i++){ let part=parts[i], pre='', d=part;
     if(C.X){ const segs=part.split('%'); let st=pct; for(let j=1;j<segs.length;j++) st=!st; pct=st; if(st) continue; if(segs.length>1){ pre=segs.slice(0,-1).join('%')+'%'; d=segs[segs.length-1]; } }
     const t=d.trim(); if(!t||/^G0?4/.test(t)||/^M0?2$/.test(t)) continue;
-    if(/G36/.test(t)){region=true;continue;} if(/G37/.test(t)){region=false;continue;}
+    if(/G36/.test(t)){ region={start:i,all:true,pts:[]}; continue; }
+    if(/G37/.test(t)){ if(region&&region.all&&region.pts.length>2){ for(let j=region.start;j<i;j++) parts[j]=parts[j].replace(/[^\r\n]+/g,''); feats.regions.push(region.pts.flat()); parts[i]=pre+d.replace(/G37/,'X'+C.fmt(x)+'Y'+C.fmt(y)+C.D0+'2'); fileMode=2; n++; for(const p of region.pts) grow(p[0],p[1]); }
+      region=null; continue; }
+    if(/G75/.test(t)) multi=true; if(/G74/.test(t)) multi=false; { const gg=t.match(/G0?([123])(?!\d)/); if(gg) interp=+gg[1]; }
     let explicit=false;
     if(C.X){ const ds=t.match(/D0*(\d+)$/); if(ds){ const v=+ds[1]; if(v>=10){ ap=v; if(!/[XY]/.test(t)) continue; } else { mode=v; fileMode=v; explicit=true; } } }
     else { const md=t.match(/D(\d+)/); if(md){ const v=+md[1]; if(v>=10) ap=v; if(v<10){ mode=v; fileMode=v; explicit=true; } } }
     const mx=t.match(/X([+-]?[\d.]+)/), my=t.match(/Y([+-]?[\d.]+)/); if(!mx&&!my) continue;
     const nx=mx?Math.round(C.num(mx[1])):x, ny=my?Math.round(C.num(my[1])):y;
-    if(!region){
-      const kill=(mode===1&&inR(x,y)&&inR(nx,ny))||(mode===3&&inR(nx,ny));
-      if(kill){ d=d.replace(/[IJ][+-]?[\d.]+/g,'').replace(/D0*[123](?![0-9])/g,'')+C.D0+'2'; fileMode=2; n++; aps[ap]=(aps[ap]||0)+1; for(const [px,py] of mode===1?[[x,y],[nx,ny]]:[[nx,ny]]){ bb[0]=Math.min(bb[0],px); bb[1]=Math.min(bb[1],py); bb[2]=Math.max(bb[2],px); bb[3]=Math.max(bb[3],py); } }
-      else if(!explicit&&mode!==fileMode){ d=d+C.D0+mode; fileMode=mode; }
-      parts[i]=pre+d; }
+    if(region){ region.pts.push([nx,ny]); if(!inR(nx,ny)) region.all=false; x=nx; y=ny; continue; }
+    const kill=(mode===1&&inR(x,y)&&inR(nx,ny))||(mode===3&&inR(nx,ny));
+    if(kill){ if(mode===3) feats.flashes.push({ap,x:nx,y:ny}); else { let pts=[[x,y],[nx,ny]]; const mi=t.match(/I([+-]?[\d.]+)/), mj=t.match(/J([+-]?[\d.]+)/);
+        if(C.X&&interp!==1&&(mi||mj)){ const I=mi?C.num(mi[1]):0, J=mj?C.num(mj[1]):0; let cx=x+I, cy=y+J;
+          if(!multi){ let best=null; for(const sx of [1,-1]) for(const sy of [1,-1]){ const c=[x+sx*Math.abs(I),y+sy*Math.abs(J)]; const e=Math.abs(Math.hypot(x-c[0],y-c[1])-Math.hypot(nx-c[0],ny-c[1])); if(!best||e<best[0]) best=[e,c]; } [cx,cy]=best[1]; }
+          const r=Math.hypot(x-cx,y-cy); let a0=Math.atan2(y-cy,x-cx), a1=Math.atan2(ny-cy,nx-cx); if(interp===2){ if(a1>=a0) a1-=2*Math.PI; } else { if(a1<=a0) a1+=2*Math.PI; }
+          if(Math.abs(nx-x)<1&&Math.abs(ny-y)<1&&multi) a1=a0+(interp===2?-2:2)*Math.PI; const m=Math.max(4,Math.ceil(Math.abs(a1-a0)*r/50)); pts=[[x,y]]; for(let q=1;q<=m;q++){ const a=a0+(a1-a0)*q/m; pts.push([Math.round(cx+r*Math.cos(a)),Math.round(cy+r*Math.sin(a))]); } }
+        feats.lines.push({ap,pts}); }
+      d=d.replace(/[IJ][+-]?[\d.]+/g,'').replace(/D0*[123](?![0-9])/g,'')+C.D0+'2'; fileMode=2; n++; aps[ap]=(aps[ap]||0)+1; for(const [px,py] of mode===1?[[x,y],[nx,ny]]:[[nx,ny]]) grow(px,py); }
+    else if(!explicit&&mode!==fileMode){ d=d+C.D0+mode; fileMode=mode; }
+    parts[i]=pre+d; x=nx; y=ny; }
+  return {text:parts.join('*'),n,aps,bb,feats}; }
+// add features {lines:[{ap,pts}], flashes:[{ap,x,y}], regions:[[x,y,...]]}; ap = ['C',d] | ['R',w,h] | ['O',w,ax,ay,bx,by] in board units. New apertures are defined in the file's own style.
+function gAppend(txt,F){ if(isExcellonText(txt)) return xAppend(txt,F);
+  const C=silkCodec(txt), nl=/\r\n/.test(txt)?'\r\n':'\n', raw=txt.replace(/[\r\n]/g,''); const lines=[...(F.lines||[])], flashes=[];
+  for(const f of F.flashes||[]){ if(f.ap[0]==='O'){ const a=f.ap; lines.push({ap:['C',a[1]],pts:[[f.x+a[2],f.y+a[3]],[f.x+a[4],f.y+a[5]]]}); } else flashes.push(f); }
+  let next=Math.max(9,...[...raw.matchAll(C.X?/%ADD0*(\d+)/g:/G04%A0*(\d+):/g)].map(m=>+m[1]))+1; const defs=new Map(); let defTxt='';
+  const unitInch=C.X?!/%MOMM/.test(raw):!/UNIT=(MM|METRIC)/i.test(raw), apr=+((raw.match(/APR,(\d+)/)||[])[1]||10000), as=(unitInch?1e4:1e4/25.4)/apr, U=unitInch?1e4:1e4/25.4;
+  const apNo=a=>{ const k=JSON.stringify(a.map(v=>typeof v==='number'?Math.round(v):v)); if(defs.has(k)) return defs.get(k); const n=next++; defs.set(k,n);
+    if(C.X){ const v=q=>(q/U).toFixed(5).replace(/0+$/,'').replace(/\.$/,''); defTxt+=a[0]==='R'?`%ADD${n}R,${v(a[1])}X${v(a[2])}*%${nl}`:`%ADD${n}C,${v(a[1])}*%${nl}`; }
+    else { const v=q=>Math.max(1,Math.round(q/as)); const nn=String(n).padStart(3,'0'); defTxt+=a[0]==='R'?(Math.abs(a[1]-a[2])<1?`G04%A${nn}:SQR,${v(a[1])}.%*${nl}`:`G04%A${nn}:REC,${v(a[1])},${v(a[2])}.%*${nl}`):`G04%A${nn}:CIR,${v(a[1])}.%*${nl}`; }
+    return n; };
+  const P=(x,y)=>'X'+C.fmt(x)+'Y'+C.fmt(y);
+  let body=C.X?'%LPD%'+nl+'G01*'+nl:'', cur=null;
+  for(const l of lines){ const n=apNo(l.ap); if(n!==cur){ body+='D'+n+'*'+nl; cur=n; } body+=P(l.pts[0][0],l.pts[0][1])+C.D0+'2*'; for(let i=1;i<l.pts.length;i++) body+=P(l.pts[i][0],l.pts[i][1])+C.D0+'1*'; if(l.pts.length===1) body+=P(l.pts[0][0],l.pts[0][1])+C.D0+'1*'; body+=nl; }
+  for(const f of flashes){ const n=apNo(f.ap); if(n!==cur){ body+='D'+n+'*'+nl; cur=n; } body+=P(f.x,f.y)+C.D0+'3*'+nl; }
+  for(const r of F.regions||[]){ if(!C.X) continue; body+='G36*'+nl+P(r[0],r[1])+'D02*'; for(let i=2;i<r.length;i+=2) body+=P(r[i],r[i+1])+'D01*'; body+=nl+'G37*'+nl; }
+  let out=txt;
+  if(defTxt){ if(C.X) body=defTxt+body; else { const ms=[...out.matchAll(/G04%A0*\d+:[^%]*%\*[\r\n]*/g)].pop(); out=ms?out.slice(0,ms.index+ms[0].length)+defTxt+out.slice(ms.index+ms[0].length):defTxt+out; } }
+  const m=[...out.matchAll(/M0?2\s*\*/g)].pop(); return m?out.slice(0,m.index)+body+out.slice(m.index):out+nl+body; }
+// ---- Excellon (NC drill) ----
+function isExcellonText(t){ return /^\s*M48/m.test(t)||/^T\d+C[\d.]+/m.test(t); }
+function xCodec(txt){ const metric=/METRIC|M71/.test(txt), lz=!/TZ/.test(txt), U=metric?1e4/25.4:1e4, ip=metric?3:2, dp=metric?3:4;
+  return {metric,U,num:s=>{ if(s.includes('.')) return parseFloat(s)*U; const neg=s[0]==='-'; s=s.replace(/^[+-]/,''); const v=lz?parseInt(s.padEnd(ip+dp,'0'),10)/Math.pow(10,dp):parseInt(s,10)/Math.pow(10,dp); return (neg?-v:v)*U; },
+    fmt:v=>(v/U).toFixed(metric?3:4)}; }
+function xErase(txt,rects){ const C=xCodec(txt), inR=(x,y)=>rects.some(r=>x>=r[0]&&x<=r[2]&&y>=r[1]&&y<=r[3]); const L=txt.split(/(\r?\n)/); let x=0,y=0,tool=null,body=false,dirty=false,n=0; const bb=[1e18,1e18,-1e18,-1e18], feats={lines:[],flashes:[],regions:[]};
+  for(let i=0;i<L.length;i+=2){ const line=L[i].trim(); if(!line||line[0]===';') continue;
+    if(line==='%'||line==='M95'){ body=true; continue; } let m=line.match(/^T(\d+)(C[\d.]+)?/); if(m&&!/[XY]/.test(line)){ if(body) tool=+m[1]; continue; }
+    const mx=line.match(/X([+-]?[\d.]+)/), my=line.match(/Y([+-]?[\d.]+)/); if(!(mx||my)||!body||tool===null||/^G0?[0-4]|^M/.test(line)&&!/^G0?5/.test(line)) continue;
+    const nx=mx?Math.round(C.num(mx[1])):x, ny=my?Math.round(C.num(my[1])):y;
+    if(inR(nx,ny)){ L[i]=''; dirty=true; n++; feats.flashes.push({ap:tool+9000,x:nx,y:ny}); bb[0]=Math.min(bb[0],nx); bb[1]=Math.min(bb[1],ny); bb[2]=Math.max(bb[2],nx); bb[3]=Math.max(bb[3],ny); }
+    else if(dirty){ L[i]='X'+C.fmt(nx)+'Y'+C.fmt(ny); dirty=false; }
     x=nx; y=ny; }
-  return {text:parts.join('*'),n,aps,bb}; }
-function silkAppend(txt,polys,ap){ const C=silkCodec(txt), nl=/\r\n/.test(txt)?'\r\n':'\n';
-  let s=(C.X?'%LPD%'+nl+'G01*'+nl:'')+'D'+ap+'*'+nl;
-  for(const pl of polys){ s+='X'+C.fmt(pl[0][0])+'Y'+C.fmt(pl[0][1])+C.D0+'2*'; for(let i=1;i<pl.length;i++) s+='X'+C.fmt(pl[i][0])+'Y'+C.fmt(pl[i][1])+C.D0+'1*'; s+=nl; }
-  const m=[...txt.matchAll(/M0?2\s*\*/g)].pop(); return m?txt.slice(0,m.index)+s+txt.slice(m.index):txt+nl+s; }
+  return {text:L.join(''),n,aps:{},bb,feats}; }
+function xAppend(txt,F){ const C=xCodec(txt), nl=/\r\n/.test(txt)?'\r\n':'\n'; const fl=(F.flashes||[]).filter(f=>f.ap[0]==='C'); if(!fl.length) return txt;
+  let next=Math.max(0,...[...txt.matchAll(/^T(\d+)/gm)].map(m=>+m[1]))+1; const byD=new Map(); for(const f of fl){ const k=Math.round(f.ap[1]); if(!byD.has(k)) byD.set(k,{t:next++,h:[]}); byD.get(k).h.push(f); }
+  let head='', body=''; for(const [d,v] of byD){ head+=`T${v.t}C${(d/C.U).toFixed(C.metric?3:4)}${nl}`; body+=`T${v.t}${nl}`+v.h.map(f=>'X'+C.fmt(f.x)+'Y'+C.fmt(f.y)).join(nl)+nl; }
+  let out=txt; const he=out.match(/^(%|M95)\s*$/m); if(he) out=out.slice(0,he.index)+head+out.slice(he.index); else out=head+out;
+  const m=[...out.matchAll(/^M30\s*$/gm)].pop(); return m?out.slice(0,m.index)+body+out.slice(m.index):out+nl+body; }
 
 const SK={mode:null,box:null,anchor:null,last:null};
 function silkFile(b,role){ if(!b||b.fmt||!b.files||!b.srcNames||!b.srcNames[role]||b.srcNames[role].length!==1) return null;
   const nm=b.srcNames[role][0]; const k=Object.keys(b.files).find(k=>k===nm||k.endsWith('/'+nm)); return k||null; }
 function silkState(b,role){ b.silk=b.silk||{orig:{},ops:[]}; const k=silkFile(b,role); if(!k) return null;
-  if(b.silk.orig[role]==null) b.silk.orig[role]=new TextDecoder('latin1').decode(b.files[k]); return k; }
+  if(b.silk.orig[role]==null){ b.silk.orig[role]=new TextDecoder('latin1').decode(b.files[k]); if(role==='drill'&&b.layers.drill&&b.layers.drill.shifted) b.silk.shift=b.layers.drill.shifted.slice(0,2);
+    if(role==='outline'){ const o=b.files[k]; b.silk.dups=Object.keys(b.files).filter(f=>f!==k&&roleOf(f)==='dup'&&b.files[f].length===o.length&&b.files[f].every((v,i)=>v===o[i])); } }
+  return k; }
 const latin1=s=>{ const u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i)&255; return u; };
+// board coordinates -> file coordinates (only the NC drill can be shifted, see alignDrill)
+function gShiftOp(b,op){ const s=op.role==='drill'&&b.silk.shift; if(!s) return op; const [dx,dy]=s;
+  if(op.t==='erase') return {...op,rects:op.rects.map(r=>[r[0]-dx,r[1]-dy,r[2]-dx,r[3]-dy])};
+  const F=op.feats; return {...op,feats:{lines:(F.lines||[]).map(l=>({ap:l.ap,pts:l.pts.map(([x,y])=>[x-dx,y-dy])})),flashes:(F.flashes||[]).map(f=>({...f,x:f.x-dx,y:f.y-dy})),regions:(F.regions||[]).map(r=>r.map((v,i)=>v-(i%2?dy:dx)))}}; }
 function silkRebuild(b,role){ const k=silkFile(b,role); if(!k||!b.silk||b.silk.orig[role]==null) return; let t=b.silk.orig[role];
-  for(const op of b.silk.ops){ if(op.role!==role) continue; t=op.t==='erase'?silkErase(t,op.rects).text:silkAppend(t,op.polys,op.ap); }
-  b.files[k]=latin1(t); b.layers[role]=parseAny(t); b.paths=null; }
+  for(const op0 of b.silk.ops){ if(op0.role!==role) continue; const op=gShiftOp(b,op0); t=op.t==='erase'?silkErase(t,op.rects).text:gAppend(t,op.feats); }
+  b.files[k]=latin1(t); for(const d of (role==='outline'&&b.silk.dups)||[]) b.files[d]=b.files[k];
+  const L=parseAny(t); const s=role==='drill'&&b.silk.shift; if(s){ for(const a in L.flashes){ const v=L.flashes[a]; for(let i=0;i<v.length;i+=2){ v[i]+=s[0]; v[i+1]+=s[1]; } } L.shifted=b.layers.drill&&b.layers.drill.shifted; }
+  b.layers[role]=L; b.paths=null; }
+// features of a layer wholly inside a box
+function gFeaturesIn(L,r){ const inR=(x,y)=>x>=r[0]&&x<=r[2]&&y>=r[1]&&y<=r[3], F={lines:[],flashes:[],regions:[]};
+  for(const l of L.lines){ let run=null; for(let i=1;i<l.length;i+=2){ const ok=inR(l[i],l[i+1]); if(ok){ if(!run){ run={ap:L.aps[l[0]],pts:[]}; F.lines.push(run); } run.pts.push([l[i],l[i+1]]); } else run=null; } }
+  F.lines=F.lines.filter(x=>x.pts.length>1);
+  for(const a in L.flashes){ const v=L.flashes[a]; for(let i=0;i<v.length;i+=2) if(inR(v[i],v[i+1])) F.flashes.push({ap:L.aps[a],x:v[i],y:v[i+1]}); }
+  for(const g of L.regions){ let ok=true; for(let i=0;i<g.length;i+=2) if(!inR(g[i],g[i+1])){ ok=false; break; } if(ok) F.regions.push(g.slice()); }
+  return F; }
+function gMirror(F,cx){ const m=x=>2*cx-x, ap=a=>a[0]==='O'?['O',a[1],-a[2],a[3],-a[4],a[5]]:a;
+  return {lines:F.lines.map(l=>({ap:ap(l.ap),pts:l.pts.map(([x,y])=>[m(x),y])})),flashes:F.flashes.map(f=>({ap:ap(f.ap),x:m(f.x),y:f.y})),regions:F.regions.map(g=>g.map((v,i)=>i%2?v:m(v)))}; }
+const FLIP_PAIRS=[['top_cu','bot_cu'],['top_mask','bot_mask'],['top_silk','bot_silk'],['top_paste','bot_paste']], FLIP_SELF=['outline','drill','drill_dwg'];
+// turn one board of the array over: top and bottom layers swap, everything mirrored left-right inside the board outline
+function flipBoardGerber(b,id){ const g=b.regions&&b.regions.find(g=>g.id===id); if(!g) return {ok:false,msg:'보드 외곽을 찾지 못했습니다'};
+  if(b.fmt) return {ok:false,msg:'ODB++·IPC 보드는 거버 뒤집기를 지원하지 않습니다'};
+  const e=0.25/MM, R=[g.x0-e,g.y0-e,g.x1+e,g.y1+e], cx=(g.x0+g.x1)/2, skipped=[], plan=[];
+  for(const [a,c] of FLIP_PAIRS){ const ha=!!b.layers[a], hc=!!b.layers[c]; if(!ha&&!hc) continue;
+    if(!(ha&&hc)||!silkFile(b,a)||!silkFile(b,c)){ skipped.push(ROLES[ha?a:c][0]); continue; } plan.push([a,c],[c,a]); }
+  for(const r of FLIP_SELF){ if(!b.layers[r]) continue; if(!silkFile(b,r)){ skipped.push(ROLES[r][0]); continue; } plan.push([r,r]); }
+  if(!plan.length) return {ok:false,msg:'뒤집을 수 있는 거버 레이어가 없습니다'};
+  const feats={}; for(const [dst,src] of plan){ silkState(b,src); const k=silkFile(b,src), s=src==='drill'&&b.silk.shift||[0,0], Rf=[R[0]-s[0],R[1]-s[1],R[2]-s[0],R[3]-s[1]];
+    const E=silkErase(new TextDecoder('latin1').decode(b.files[k]),[Rf]).feats, A=b.layers[src].aps, sh=([x,y])=>[x+s[0],y+s[1]];
+    const F={lines:E.lines.filter(l=>A[l.ap]).map(l=>({ap:A[l.ap],pts:l.pts.map(sh)})),flashes:E.flashes.filter(f=>A[f.ap]).map(f=>({ap:A[f.ap],x:f.x+s[0],y:f.y+s[1]})),regions:E.regions.map(r=>r.map((v,i)=>v+(i%2?s[1]:s[0])))};
+    feats[dst]=gMirror(F,cx); }
+  const grp='flip'+Date.now(); for(const [dst] of plan){ silkState(b,dst); b.silk.ops.push({t:'erase',role:dst,rects:[R],grp}); b.silk.ops.push({t:'feat',role:dst,feats:feats[dst],grp,flip:id}); silkRebuild(b,dst); }
+  if(b.comps) for(const c of b.comps){ if(c.board!==id) continue; c.pads=c.pads.map(p=>[2*cx-p[0],p[1],p[2],p[3],p[4]]); c.side=c.side==='TOP'?'BOTTOM':'TOP'; if(c.rot!=null) c.rot=((540-c.rot)%360+360)%360; finishComp(c); }
+  const f=new Set(b.flipped||[]); f.has(id)?f.delete(id):f.add(id); b.flipped=[...f].sort((x,y)=>x-y); b._tc=null;
+  return {ok:true,n:plan.length,skipped}; }
 // copies of a box on the other identical boards of the array
 function silkCopies(b,r){ const all=$('silkAll').checked&&b.regions&&b.regions.length>1; if(!all) return [[0,0]];
   const cx=(r[0]+r[2])/2, cy=(r[1]+r[3])/2, me=b.regions.find(g=>cx>=g.x0&&cx<=g.x1&&cy>=g.y0&&cy<=g.y1); if(!me) return [[0,0]]; const tol=0.5/MM;
@@ -1069,8 +1190,8 @@ function silkStrokesIn(L,r){ const inR=(x,y)=>x>=r[0]&&x<=r[2]&&y>=r[1]&&y<=r[3]
   return {n:hit.length,aps,bb}; }
 function silkAp(L,aps){ const pick=o=>Object.entries(o).filter(([a])=>L.aps[a]&&L.aps[a][0]==='C').sort((p,q)=>q[1]-p[1])[0];
   let a=pick(aps||{}); if(!a){ const c={}; for(const l of L.lines) c[l[0]]=(c[l[0]]||0)+l.length; a=pick(c); } return a?+a[0]:null; }
-function silkUI(){ const b=B(), role=$('silkRole').value, ok=!!silkFile(b,role); for(const id of ['silkBox','silkText','silkH','silkRot','silkFit','silkPlace','silkAdd','silkAll']) $(id).disabled=!ok;
-  const ops=b&&b.silk?b.silk.ops.length:0; $('silkUndo').disabled=!ops; $('silkReset').disabled=!ops; $('silkSave').disabled=!ops;
+function silkUI(){ const b=B(), role=$('silkRole').value, ok=!!silkFile(b,role); for(const id of ['silkBox','silkText','silkH','silkRot','silkFit','silkFont','silkW','silkPlace','silkAdd','silkAll']) $(id).disabled=!ok;
+  const ops=b&&b.silk?new Set(b.silk.ops.map((o,i)=>o.grp||i)).size:0; $('silkUndo').disabled=!ops; $('silkReset').disabled=!ops; $('silkSave').disabled=!ops;
   $('silkBox').setAttribute('aria-pressed',SK.mode==='box'); $('silkPlace').setAttribute('aria-pressed',SK.mode==='place');
   $('silkNote').textContent=!b?'':(b.fmt?'ODB++·IPC 보드는 실크 수정을 지원하지 않습니다.':(!ok?'이 보드에는 '+(role==='top_silk'?'TOP':'BOTTOM')+' 실크 거버가 없습니다.':
     (ops?`수정 ${ops}건 · 저장 ▾ → "수정한 거버 ZIP"으로 업체용 파일을 받으세요.`:'1) 지울 영역 드래그 → 2) 새 글자 입력 → 3) 글자 넣기'))); }
@@ -1079,29 +1200,36 @@ function silkPreview(){ const b=B(), role=$('silkRole').value; if(!b||!silkFile(
   let a=SK.anchor, fw=null;
   if(!a&&SK.last){ const bb=SK.last.bb; a=rot===90?[bb[2],bb[1]]:rot===180?[bb[2],bb[3]]:rot===270?[bb[0],bb[3]]:[bb[0],bb[1]]; }
   if(!a) return null; if(fit){ const bb=SK.last.bb; fw=(rot%180?bb[3]-bb[1]:bb[2]-bb[0]); }
-  const ap=SK.last&&SK.last.ap||silkAp(L), polys=silkTextStrokes(txt,a[0],a[1],h,rot,role==='bot_silk',fw);
-  return {polys,ap,w:L.aps[ap]?L.aps[ap][1]:10}; }
+  const G=silkTextGeom(txt,a[0],a[1],h,rot,role==='bot_silk',fw,$('silkFont').value,(+$('silkW').value||0.2)/MM);
+  return {polys:G.polys,w:G.w}; }
 function drawSilk(b,dpr){ if(SK.box){ const [x0,y0]=toScreen(SK.box[0],SK.box[1]), [x1,y1]=toScreen(SK.box[2],SK.box[3]); ctx.setLineDash([6*dpr,4*dpr]); ctx.strokeStyle='#ffe600'; ctx.lineWidth=1.5*dpr; ctx.strokeRect(Math.min(x0,x1),Math.min(y0,y1),Math.abs(x1-x0),Math.abs(y1-y0)); ctx.setLineDash([]); }
   const pv=silkPreview(); if(!pv) return; const offs=SK.last?SK.last.offs:[[0,0]];
-  ctx.save(); ctx.setTransform((flip?-1:1)*view.s,0,0,-view.s,view.tx,view.ty); ctx.strokeStyle='#ffe600'; ctx.globalAlpha=0.9; ctx.lineWidth=Math.max(pv.w,1.5/view.s); ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.save(); ctx.setTransform((flip?-1:1)*view.s,0,0,-view.s,view.tx,view.ty); ctx.strokeStyle='#ffffff'; ctx.globalAlpha=0.9; ctx.lineWidth=Math.max(pv.w,1.5/view.s); ctx.lineCap='round'; ctx.lineJoin='round';
   for(const [dx,dy] of offs) for(const pl of pv.polys){ ctx.beginPath(); ctx.moveTo(pl[0][0]+dx,pl[0][1]+dy); for(const p of pl.slice(1)) ctx.lineTo(p[0]+dx,p[1]+dy); if(pl.length===2&&pl[0][0]===pl[1][0]&&Math.abs(pl[0][1]-pl[1][1])<2) ctx.lineTo(pl[0][0]+0.5,pl[0][1]); ctx.stroke(); }
   ctx.restore(); }
 function silkFinishBox(){ const b=B(), role=$('silkRole').value, r=SK.box; SK.box=null; if(!b||!r) return; const k=silkState(b,role); if(!k){ draw(); return; }
   const R=[Math.min(r[0],r[2]),Math.min(r[1],r[3]),Math.max(r[0],r[2]),Math.max(r[1],r[3])], L=b.layers[role], hit=silkErase(new TextDecoder('latin1').decode(b.files[k]),[R]);
   if(!hit.n){ toast('이 영역 안에 통째로 들어간 실크 선이 없습니다. 글자를 넉넉히 감싸게 드래그하세요.'); draw(); return; }
   const offs=silkCopies(b,R), rects=offs.map(([dx,dy])=>[R[0]+dx,R[1]+dy,R[2]+dx,R[3]+dy]);
+  const sw=inkStroke(b,role,[hit.bb[0]-0.3/MM,hit.bb[1]-0.3/MM,hit.bb[2]+0.3/MM,hit.bb[3]+0.3/MM]); if(sw>0) $('silkW').value=(sw*MM).toFixed(2);
   b.silk.ops.push({t:'erase',role,rects}); silkRebuild(b,role);
-  const ap=silkAp(L,hit.aps); SK.last={bb:hit.bb,ap,offs}; SK.anchor=null; SK.mode=null;
-  const rot=+$('silkRot').value, hh=(rot%180?hit.bb[2]-hit.bb[0]:hit.bb[3]-hit.bb[1])*MM; if(hh>0.2) $('silkH').value=hh.toFixed(2);
+  SK.last={bb:hit.bb,offs}; SK.anchor=null; SK.mode=null;
+  { const ap=L.aps[Object.entries(hit.aps).sort((p,q)=>q[1]-p[1])[0]?.[0]]; const hw=ap?ap[1]/2:0; SK.last.bb=[hit.bb[0]-hw,hit.bb[1]-hw,hit.bb[2]+hw,hit.bb[3]+hw]; }
+  const rot=+$('silkRot').value, bb2=SK.last.bb, hh=(rot%180?bb2[2]-bb2[0]:bb2[3]-bb2[1])*MM; if(hh>0.2) $('silkH').value=hh.toFixed(2);
+  if(hh>0.2&&sw>0&&$('silkFont').value!=='line') $('silkFont').value=sw*MM/hh<0.12?'normal':'bold';
   silkUI(); draw(); toast(`실크 선 ${hit.n}줄을 지웠습니다${offs.length>1?` (어레이 보드 ${offs.length}개 모두)`:''}. 새 글자를 입력하세요.`); $('silkText').focus(); }
 function silkAddText(){ const b=B(), role=$('silkRole').value; const pv=silkPreview(); if(!pv){ toast(SK.last||SK.anchor?'새 글자를 입력하세요':'먼저 지울 영역을 드래그하거나 "위치 클릭"으로 자리를 정하세요'); return; }
-  if(!pv.ap){ toast('실크 레이어에서 선 굵기(조리개)를 찾지 못했습니다'); return; } silkState(b,role);
+  if(!pv.polys.length){ toast('글자를 그리지 못했습니다'); return; } silkState(b,role);
   const offs=SK.last?SK.last.offs:silkCopies(b,[SK.anchor[0],SK.anchor[1],SK.anchor[0],SK.anchor[1]]);
   const polys=[]; for(const [dx,dy] of offs) for(const pl of pv.polys) polys.push(pl.map(([x,y])=>[x+dx,y+dy]));
-  b.silk.ops.push({t:'text',role,polys,ap:pv.ap,text:$('silkText').value.trim()}); silkRebuild(b,role);
+  b.silk.ops.push({t:'feat',role,feats:{lines:polys.map(pts=>({ap:['C',pv.w],pts}))},text:$('silkText').value.trim()}); silkRebuild(b,role);
   const t=$('silkText').value.trim(); $('silkText').value=''; SK.last=null; SK.anchor=null; SK.mode=null; silkUI(); draw(); toast(`"${t}" 글자를 넣었습니다${offs.length>1?` (보드 ${offs.length}개)`:''}`); }
-function silkReset(all){ const b=B(); if(!b||!b.silk) return; const roles=new Set(b.silk.ops.map(o=>o.role)); if(all) b.silk.ops=[]; else b.silk.ops.pop();
-  for(const r of roles) silkRebuild(b,r); SK.last=null; SK.anchor=null; silkUI(); draw(); toast(all?'실크를 원래대로 되돌렸습니다':'실크 수정 하나를 되돌렸습니다'); }
+function undoFlipComps(b,id){ const g=b.regions&&b.regions.find(g=>g.id===id); if(!g) return; const cx=(g.x0+g.x1)/2;
+  if(b.comps) for(const c of b.comps){ if(c.board!==id) continue; c.pads=c.pads.map(p=>[2*cx-p[0],p[1],p[2],p[3],p[4]]); c.side=c.side==='TOP'?'BOTTOM':'TOP'; if(c.rot!=null) c.rot=((540-c.rot)%360+360)%360; finishComp(c); }
+  b.flipped=(b.flipped||[]).filter(x=>x!==id); b._tc=null; }
+function silkReset(all){ const b=B(); if(!b||!b.silk) return; const roles=new Set(b.silk.ops.map(o=>o.role)); if(all) b.silk.ops=[]; else { const last=b.silk.ops.pop(); if(last&&last.grp){ while(b.silk.ops.length&&b.silk.ops[b.silk.ops.length-1].grp===last.grp) b.silk.ops.pop(); if(last.flip!=null) undoFlipComps(b,last.flip); } }
+  if(all) for(const id of [...(b.flipped||[])]) undoFlipComps(b,id);
+  for(const r of roles) silkRebuild(b,r); SK.last=null; SK.anchor=null; sel.clear(); boardOptions(); renderTable(); updateEditor(); silkUI(); draw(); toast(all?'거버를 원래대로 되돌렸습니다':'수정 하나를 되돌렸습니다'); }
 async function silkSaveZip(){ const b=B(); if(!b||!b.silk||!b.silk.ops.length) return; const zip=new JSZip();
   for(const [k,v] of Object.entries(b.files)){ if(/pcbviewer\.json$|(^|\/)reference\.(jpg|png)$/i.test(k)) continue; zip.file(k,v); }
   const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE'}); saveFile(b.name+'_실크수정.zip',blob); }
@@ -1142,26 +1270,48 @@ function copyPitch(b){const R=b.regions||[]; if(R.length<2) return null; const a
   return R.slice(1).map(g=>({id:g.id,dx:(g.x0-a.x0)*MM,dy:(g.y0-a.y0)*MM}));}
 // group array boards into kinds: same outline size and (mostly) the same part positions
 function boardTypes(b){ if(!b||!b.regions) return []; const cs=b.comps||[];
-  if(b._tc&&b._tc.comps===b.comps&&b._tc.len===cs.length&&b._tc.reg===b.regions&&b._tc.names===JSON.stringify(b.typeNames||{})) return b._tc.T;
-  const tol=0.5/MM, sig=g=>{const s=new Set(); for(const c of cs) if(c.board===g.id) s.add(Math.round((c.x-g.x0)*MM)+','+Math.round((c.y-g.y0)*MM)); return s;};
+  if(b._tc&&b._tc.comps===b.comps&&b._tc.len===cs.length&&b._tc.reg===b.regions&&b._tc.fl===JSON.stringify(b.flipped||[])&&b._tc.names===JSON.stringify(b.typeNames||{})) return b._tc.T;
+  const tol=0.5/MM, F=new Set(b.flipped||[]), sig=g=>{const s=new Set(); for(const c of cs) if(c.board===g.id) s.add(Math.round((F.has(g.id)?g.x1-c.x:c.x-g.x0)*MM)+','+Math.round((c.y-g.y0)*MM)); return s;};
   const hit=(a,B)=>{let n=0; for(const k of a){ const [x,y]=k.split(',').map(Number); let f=false; for(let dx=-1;dx<=1&&!f;dx++) for(let dy=-1;dy<=1&&!f;dy++) if(B.has((x+dx)+','+(y+dy))) f=true; if(f) n++; } return n;};
   const same=(A,B)=>{ if(!A.size&&!B.size) return true; if(!A.size||!B.size) return false; return Math.min(hit(A,B),hit(B,A))>=0.8*Math.max(A.size,B.size); };
   const T=[]; for(const g of [...b.regions].sort((p,q)=>p.id-q.id)){ const w=g.x1-g.x0, h=g.y1-g.y0, sg=sig(g);
     let t=T.find(t=>Math.abs(t.w-w)<tol&&Math.abs(t.h-h)<tol&&same(t.sig,sg)); if(!t){ t={w,h,sig:sg,ids:[],rep:g.id}; T.push(t); } t.ids.push(g.id); }
   T.forEach((t,i)=>{ t.key=String.fromCharCode(65+i); t.n=cs.filter(c=>c.board===t.rep).length; t.name=(b.typeNames||{})[t.key]||''; });
-  b._tc={comps:b.comps,len:cs.length,reg:b.regions,names:JSON.stringify(b.typeNames||{}),T}; return T; }
+  b._tc={fl:JSON.stringify(b.flipped||[]),comps:b.comps,len:cs.length,reg:b.regions,names:JSON.stringify(b.typeNames||{}),T}; return T; }
 const typeOfBoard=(b,id)=>{ const t=boardTypes(b).find(t=>t.ids.includes(id)); return t?t.key:''; };
 function typeLabel(t){ return '종류 '+t.key+(t.name?' '+t.name:''); }
 function buildTypeList(){ const b=B(), el=$('typeList'), T=boardTypes(b); $('typeZipBtn').hidden=T.length<2; if(!b||!b.comps||T.length<2){ el.hidden=true; el.innerHTML=''; return; }
-  el.hidden=false; el.innerHTML='<div class="tlh">보드 종류별 파트리스트 <small>종류마다 대표 보드 하나만 뽑으면 됩니다</small></div>'+T.map(t=>`<div class="tl" data-k="${t.key}"><b>${t.key}</b><span class="tli">보드 ${t.ids.join(', ')} · ${(t.w*MM).toFixed(1)}×${(t.h*MM).toFixed(1)} · 부품 ${t.n}</span><input placeholder="이름 (예: SENSOR B/D)" value="${esc(t.name)}"><div class="row" style="grid-column:1/-1"><button data-a="view">보드 보기</button><button data-a="csv">이 종류 CSV 저장</button></div></div>`).join('');
+  el.hidden=false; el.innerHTML='<div class="tlh">보드 종류별 파트리스트 <small>종류마다 대표 보드 하나만 뽑으면 됩니다</small></div><div class="row" style="margin:4px 0"><button id="typeRead" title="종류마다 대표 보드의 실크를 Claude가 읽어 이름 칸을 채웁니다">실크에서 보드 이름 읽기</button></div>'+T.map(t=>`<div class="tl" data-k="${t.key}"><b>${t.key}</b><span class="tli">보드 ${t.ids.join(', ')} · ${(t.w*MM).toFixed(1)}×${(t.h*MM).toFixed(1)} · 부품 ${t.n}</span><input placeholder="이름 (예: SENSOR B/D)" value="${esc(t.name)}"><div class="row" style="grid-column:1/-1"><button data-a="view">보드 보기</button><button data-a="csv">이 종류 CSV 저장</button></div></div>`).join('');
   el.querySelectorAll('.tl').forEach(row=>{ const k=row.dataset.k, t=T.find(t=>t.key===k);
     row.querySelector('input').onchange=e=>{ b.typeNames=b.typeNames||{}; const v=e.target.value.trim(); if(v) b.typeNames[k]=v; else delete b.typeNames[k]; boardOptions(); };
-    row.querySelector('[data-a=view]').onclick=()=>{ b.boardPick=String(t.rep); boardOptions(); renderTable(); draw(); };
-    row.querySelector('[data-a=csv]').onclick=()=>{ const tt=boardTypes(b).find(x=>x.key===k); saveFile(typeFileName(b,tt),csvText(rowsFor(c=>c.board===tt.rep),typeLabel(tt)+' · 대표 보드 '+tt.rep+' (보드 '+tt.ids.join(',')+')')); }; }); }
+    row.querySelector('[data-a=view]').onclick=()=>{ b.boardPick=String(t.rep); boardOptions(); renderTable(); zoomBoard(b,t.rep); };
+    row.querySelector('input').dataset.k=k;
+    row.querySelector('[data-a=csv]').onclick=()=>{ const tt=boardTypes(b).find(x=>x.key===k); saveFile(typeFileName(b,tt),csvText(rowsFor(c=>c.board===tt.rep),typeLabel(tt)+' · 대표 보드 '+tt.rep+' (보드 '+tt.ids.join(',')+')')); }; });
+  $('typeRead').onclick=()=>readTypeNames(b,false);
+  if(!b._namesTried&&sampleFn&&sampleCaps&&sampleCaps.images&&T.every(t=>!t.name)){ b._namesTried=true; setTimeout(()=>readTypeNames(b,true),300); } }
+// white-on-black picture of one board's silk, cropped to its outline
+async function silkPicture(b,id){ const g=b.regions.find(g=>g.id===id); if(!g) return null; const P=getPaths(b);
+  const inside=r=>{ const L=b.layers[r]; if(!L) return 0; let n=0; for(const l of L.lines) if(l[1]>=g.x0&&l[1]<=g.x1&&l[2]>=g.y0&&l[2]<=g.y1) n++; return n; };
+  const role=inside('top_silk')>=inside('bot_silk')?'top_silk':'bot_silk'; if(!P[role]) return null;
+  const pad=1/MM, w=g.x1-g.x0+2*pad, h=g.y1-g.y0+2*pad, sc=1400/Math.max(w,h);
+  const c=document.createElement('canvas'); c.width=Math.ceil(w*sc); c.height=Math.ceil(h*sc); const x=c.getContext('2d'); x.fillStyle='#000'; x.fillRect(0,0,c.width,c.height);
+  const m=role==='bot_silk'; x.setTransform(m?-sc:sc,0,0,-sc,m?(g.x1+pad)*sc:-(g.x0-pad)*sc,(g.y1+pad)*sc); x.strokeStyle='#fff'; x.fillStyle='#fff';
+  for(const st of P[role].strokes){ x.lineWidth=Math.max(st.w,1.6/sc); x.lineCap=st.cap; x.lineJoin='round'; x.stroke(st.p); } x.fill(P[role].fill,'nonzero');
+  return await new Promise(ok=>c.toBlob(ok,'image/png')); }
+const NAME_PROMPT=`이 그림은 PCB 한 장의 실크 인쇄 레이어(흰 글자, 검은 배경)를 보드 외곽에 맞춰 잘라낸 것입니다. 글자가 90° 돌아가 있을 수 있습니다.
+보드 이름(제품·보드 명칭, 예: "SENSOR B/D", "COMBO TOUCH MAIN B/D")을 찾아 주세요. 리비전(Rev1), 날짜, UL·94V-0 표시, 부품 레퍼런스(U1, C3, CN5), 단자 표기(GND, A+, HALL-A)는 이름이 아닙니다.
+JSON 하나만 답하세요: {"name":"보드 이름 그대로, 없으면 빈 문자열","rev":"Rev 표기가 있으면 그대로","confidence":0~1}`;
+async function readTypeNames(b,auto){ if(!sampleFn||!(sampleCaps&&sampleCaps.images)){ if(!auto) toast('이 화면에서는 Claude 판독을 쓸 수 없습니다 (claude.ai에서 열면 됩니다). 이름은 직접 입력하세요.'); return; }
+  const T=boardTypes(b); const btn=$('typeRead'); if(btn){ btn.disabled=true; btn.textContent='읽는 중…'; } let got=0;
+  for(const t of T){ if(auto&&t.name) continue;
+    try{ const img=await silkPicture(b,t.rep); if(!img) continue; const J=await sampleFn.json(NAME_PROMPT,{images:[img]});
+      const nm=String(J&&J.name||'').trim(); if(nm){ b.typeNames=b.typeNames||{}; b.typeNames[t.key]=nm; got++; if(b===B()){ const inp=document.querySelector(`#typeList input[data-k="${t.key}"]`); if(inp) inp.value=nm; } } }
+    catch(e){ if(e&&e.code==='not_granted'){ toast('Claude 판독 권한이 없어 이름을 직접 입력해야 합니다'); break; } if(e&&e.code==='rate_limited'){ toast('잠시 후 다시 눌러 주세요'); break; } console.warn('name read',e); } }
+  if(b===B()){ boardOptions(); toast(got?`실크에서 보드 이름 ${got}개를 읽었습니다. 틀리면 칸에서 고치세요.`:'실크에서 보드 이름을 찾지 못했습니다. 직접 입력하세요.'); } }
 const typeFileName=(b,t)=>`${b.name}_종류${t.key}${t.name?'_'+t.name.replace(/[\\/:*?"<>|]/g,'_'):''}_좌표.csv`;
 function boardOptions(){const b=B(), s=$('boardSel'); const cp=copyPitch(b), T=boardTypes(b), multi=T.length>1;
   s.innerHTML='<option value="">모든 보드</option>'+(b.regions||[]).map(g=>{ const t=T.find(t=>t.ids.includes(g.id)); return `<option value="${g.id}">보드 ${g.id}${multi&&t?' · '+esc(typeLabel(t)):''}${(cp&&g.id===1)||(multi&&t&&t.rep===g.id&&t.ids.length>1)?' (대표)':''}${(b.flipped||[]).includes(g.id)?' · 면 바뀜':''}</option>`; }).join('');
-  if(b.boardPick==null&&b.regions) b.boardPick=cp?'1':''; s.value=b.boardPick||''; if(![...s.options].some(o=>o.value===s.value)) s.value=''; $('flipBoardBtn').disabled=!s.value||!b.comps; buildTypeList();}
+  if(b.boardPick==null&&b.regions) b.boardPick=cp?'1':''; s.value=b.boardPick||''; if(![...s.options].some(o=>o.value===s.value)) s.value=''; $('flipBoardBtn').disabled=!s.value||!!b.fmt; buildTypeList();}
 function natural(a,c){return a.localeCompare(c,undefined,{numeric:true});}
 function rowsFor(flt){const b=B(); if(!b||!b.comps) return []; const mir=$('mirrorBot').checked;
   return b.comps.filter(flt||passes).map(c=>{const o=originFor(c); let x=(c.x-o[0])*MM, y=(c.y-o[1])*MM;
@@ -1215,20 +1365,19 @@ $('splitBtn').onclick=()=>{const b=B(), c=[...sel][0]; const parts=c.pads.map((p
   b.comps=b.comps.filter(x=>x!==c).concat(parts); sel=new Set(parts); updateEditor(); renderTable(); draw(); buildInfo();};
 $('delBtn').onclick=()=>{const b=B(); const gone=new Set(withTwins([...sel])); b.comps=b.comps.filter(c=>!gone.has(c)); sel.clear(); updateEditor(); renderTable(); draw(); buildInfo();};
 $('reExtract').onclick=async()=>{const b=B(); b.comps=null; b.snaps=null; sel.clear(); await ensureParts(b); toast('자동 추출을 다시 했습니다. 편집 내용은 초기화됐습니다.');};
-$('boardSel').onchange=()=>{B().boardPick=$('boardSel').value; $('flipBoardBtn').disabled=!B().boardPick||!B().comps; renderTable();draw();};
+$('boardSel').onchange=()=>{B().boardPick=$('boardSel').value; $('flipBoardBtn').disabled=!B().boardPick||!!B().fmt; renderTable();draw();};
 $('silkRole').onchange=()=>{ SK.last=null; SK.anchor=null; if(!on.has($('silkRole').value)){ on.add($('silkRole').value); buildLayers(); } silkUI(); draw(); };
 $('silkBox').onclick=()=>{ SK.mode=SK.mode==='box'?null:'box'; picking=false; rfAlign=null; const r=$('silkRole').value; if(SK.mode&&!on.has(r)){ on.add(r); buildLayers(); } silkUI(); draw(); if(SK.mode) toast('지울 글자를 감싸도록 드래그하세요. 선이 상자 안에 통째로 들어가야 지워집니다.'); };
 $('silkPlace').onclick=()=>{ SK.mode=SK.mode==='place'?null:'place'; silkUI(); if(SK.mode) toast('글자의 왼쪽 아래가 올 자리를 클릭하세요'); };
-for(const id of ['silkText','silkH','silkRot','silkFit']) $(id).addEventListener('input',()=>draw());
+for(const id of ['silkText','silkH','silkRot','silkFit','silkFont','silkW']) $(id).addEventListener('input',()=>draw());
 $('silkText').addEventListener('keydown',e=>{ if(e.key==='Enter') silkAddText(); });
 $('silkAdd').onclick=silkAddText; $('silkUndo').onclick=()=>silkReset(false); $('silkReset').onclick=()=>silkReset(true); $('silkSave').onclick=silkSaveZip;
 $('typeZipBtn').onclick=async()=>{ const b=B(), T=boardTypes(b); if(!b||!b.comps||T.length<2) return; const zip=new JSZip();
   for(const t of T) zip.file(typeFileName(b,t),csvText(rowsFor(c=>c.board===t.rep),typeLabel(t)+' · 대표 보드 '+t.rep+' (보드 '+t.ids.join(',')+')'));
   saveFile(b.name+'_종류별_파트리스트.zip',await zip.generateAsync({type:'blob',compression:'DEFLATE'})); };
-$('flipBoardBtn').onclick=()=>{const b=B(), id=+$('boardSel').value; if(!b||!b.comps||!id) return;
-  const cs=b.comps.filter(c=>c.board===id); for(const c of cs) c.side=c.side==='TOP'?'BOTTOM':'TOP';
-  const f=new Set(b.flipped||[]); f.has(id)?f.delete(id):f.add(id); b.flipped=[...f].sort((x,y)=>x-y);
-  boardOptions(); updateEditor(); renderTable(); draw(); toast(`보드 ${id}의 부품 ${cs.length}개 실장면을 바꿨습니다 (TOP↔BOTTOM)`);}; $('sideSel').onchange=()=>{renderTable();draw();}; $('typeSel').onchange=()=>{renderTable();draw();}; $('mirrorBot').onchange=renderTable;
+$('flipBoardBtn').onclick=()=>{const b=B(), id=+$('boardSel').value; if(!b||!id) return; const r=flipBoardGerber(b,id); if(!r.ok){ toast(r.msg); return; }
+  sel.clear(); buildLayers(); boardOptions(); updateEditor(); renderTable(); silkUI(); draw();
+  toast(`보드 ${id}의 거버를 위아래로 뒤집었습니다 (레이어 ${r.n}개)`+(r.skipped.length?` · 짝이 없어 그대로 둔 레이어: ${r.skipped.join(', ')}`:'')+'. 저장 ▾ → 수정한 거버 ZIP');}; $('sideSel').onchange=()=>{renderTable();draw();}; $('typeSel').onchange=()=>{renderTable();draw();}; $('mirrorBot').onchange=renderTable;
 $('originMode').onchange=e=>{const b=B(); b.originMode=e.target.value; if(b.originMode==='custom'&&!b.origin){picking=true;$('pickOrigin').setAttribute('aria-pressed','true');} syncOriginUI(); renderTable(); updateEditor(); draw();};
 $('pickOrigin').onclick=e=>{picking=!picking; e.target.setAttribute('aria-pressed',picking); if(picking) toast('마킹홀(센터)이나 외곽 모서리에 커서를 대면 노란 표시로 붙습니다. 클릭하면 ORG로 정해집니다.'); else {hoverSnap=null; draw();}};
 $('fit').onclick=fit;
