@@ -56,6 +56,9 @@ input[type=text],input[type=number],select{font:inherit;font-size:13px;border:1p
 .tl{display:grid;grid-template-columns:auto 1fr;gap:4px 8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:12.5px}
 .tl b{font-family:var(--f-mono);font-size:14px}.tl .tli{color:var(--muted)}.tl input{grid-column:1/-1;min-width:0}.tl button{padding:3px 10px}
 .tlh{font-weight:600;font-size:13px;margin-top:8px}.tlh small{font-weight:400;color:var(--muted);margin-left:6px}
+.pinfo{display:grid;gap:6px;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--line)}
+.pinfo-h{display:flex;align-items:center;justify-content:space-between;gap:8px}.pinfo-h h2{margin:0}.pinfo-h button{padding:3px 10px;font-size:12.5px}
+.pinfo label{display:grid;grid-template-columns:52px 1fr;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}.pinfo input{min-width:0;font-weight:600;color:var(--fg)}
 .tabs .x{margin-left:8px;padding:0 5px;border-radius:4px;opacity:.55;font-size:12px}
 .tabs .x:hover{opacity:1;background:var(--line)}
 .tabs .x[data-arm]{opacity:1;background:#c0392b;color:#fff}
@@ -74,7 +77,7 @@ td:first-child,th:first-child{text-align:left}
 .ptable{overflow:auto;flex:1;min-height:160px}
 .ptable tr{cursor:pointer}
 .ptable tr.sel td{background:var(--sel)}
-.ptable td.auto{color:var(--warn)}
+.ptable td.auto{color:var(--warn)}.ptable td.ai{color:#4fc3f7}
 .stage{position:relative;min-height:320px;border-radius:8px;overflow:hidden;background:var(--board);border:1px solid var(--line)}
 canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:crosshair}
 .busy{position:absolute;left:12px;top:12px;background:rgba(0,0,0,.7);color:#fff;padding:6px 10px;border-radius:6px;font-size:12.5px}
@@ -149,7 +152,7 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
     <section><h2>보기</h2><div class="row">
       <button id="fit">화면 맞춤</button>
       <button id="flip" aria-pressed="false">뒷면(미러)</button></div>
-      <p class="note" style="margin-top:6px">휠/핀치로 확대, 드래그로 이동. 부품을 클릭하면 선택, Shift+클릭으로 여러 개 선택.</p></section>
+      <p class="note" style="margin-top:6px">휠/핀치로 확대, 드래그로 이동. 부품을 클릭하면 선택, Shift+클릭으로 여러 개 선택. 부품이 없는 보드 안쪽을 클릭하면 그 보드를 고릅니다.</p></section>
     <section><h2>실크 수정</h2>
       <div style="display:grid;gap:6px">
         <div class="row" style="font-size:12.5px"><select id="silkRole"><option value="top_silk">TOP 실크</option><option value="bot_silk">BOTTOM 실크</option></select>
@@ -186,10 +189,14 @@ dialog::backdrop{background:rgba(0,0,0,.4)}
   </aside>
   <div class="stage" id="stage"><canvas id="cv"></canvas><div class="busy" id="busy" hidden>부품 좌표 계산 중…</div></div>
   <section class="parts">
+    <div class="pinfo" id="pinfo">
+      <div class="pinfo-h"><h2>자삽바 표기</h2><button id="panelRead" title="자삽바(보드 바깥 테두리)의 실크를 Claude가 읽습니다">실크에서 읽기</button></div>
+      <label>보드명 <input id="panelName" placeholder="예: DUV-COMBO_Main" autocomplete="off"></label>
+      <label>일자 <input id="panelDate" placeholder="예: 2025.12.18" autocomplete="off"></label></div>
     <div><h2>부품 좌표</h2>
       <div class="row"><select id="boardSel"></select><select id="sideSel"><option value="">양면</option><option value="TOP">TOP</option><option value="BOTTOM">BOTTOM</option></select><select id="typeSel"><option value="">SMD + DIP</option><option value="SMD">SMD만</option><option value="DIP">DIP만 (LED 홀)</option></select>
       <label class="row" style="gap:4px;font-size:12.5px"><input type="checkbox" id="mirrorBot"> BOTTOM X 미러</label>
-      <button id="flipBoardBtn" disabled title="고른 보드의 거버를 위아래로 뒤집습니다: TOP↔BOTTOM 레이어 교체 + 좌우 미러 (드릴·외곽도 미러)">이 보드 위아래 뒤집기</button></div>
+      <button id="flipBoardBtn" disabled title="고른 보드의 거버를 위아래로 뒤집습니다: TOP↔BOTTOM 레이어 교체 + 좌우 미러 (드릴·외곽도 미러)">이 보드 위아래 뒤집기</button><button id="rotBoardBtn" disabled title="고른 보드를 보드 중심으로 180° 돌립니다. 보드 자르는 선도 같이 돌고, 자삽바 쪽 탭·재봉선은 그대로 둡니다">이 보드 180° 회전</button></div>
       <p class="note" id="partsNote" style="margin-top:6px"></p>
       <div id="typeList" hidden></div></div>
     <div id="editor" hidden>
@@ -419,7 +426,7 @@ function buildBoard(name,files){
   if(!Object.keys(layers).length){ if(ipc){ const bb=ipcBoard(name,files,ipc); if(project){ bb.comps=project.comps||bb.comps; bb.origin=project.origin||null; bb.originKind=project.originKind||null; bb.originMode=project.originMode||'board'; bb.regions=project.regions||bb.regions; bb.fromProject=true; bb.comps.forEach(finishComp); bb.refPending=rfPendingFrom(files,project); } return bb; } throw new Error('거버 레이어를 찾지 못했습니다'); }
   alignDrill(layers);
   const b={name,files,layers,srcNames,ext:extentOf(layers),paths:null,comps:null,regions:null,origin:null,originMode:'board',ipc,ipcName};
-  if(project){ b.comps=project.comps||null; b.origin=project.origin||null; b.originKind=project.originKind||null; b.originMode=project.originMode||'board'; b.regions=project.regions||null; b.flipped=project.flipped||[]; b.typeNames=project.typeNames||null; b.fromProject=true; if(b.comps) b.comps.forEach(finishComp); b.refPending=rfPendingFrom(files,project); }
+  if(project){ b.comps=project.comps||null; b.origin=project.origin||null; b.originKind=project.originKind||null; b.originMode=project.originMode||'board'; b.regions=project.regions||null; b.flipped=project.flipped||[]; b.typeNames=project.typeNames||null; b.panel=project.panel||null; b.rotated=project.rotated||{}; b.fromProject=true; if(b.comps) b.comps.forEach(finishComp); b.refPending=rfPendingFrom(files,project); }
   return b;
 }
 function flashPts(L){const out=[]; if(!L) return out; for(const a in L.flashes){const v=L.flashes[a]; for(let i=0;i<v.length;i+=2) out.push([v[i],v[i+1]]);} return out;}
@@ -754,7 +761,7 @@ function buildOdb(name,files){
     return {ref:c.ref,part:c.part,refSrc:'odb',how:'odb',side:c.side,rot:c.rot,board:bd,pads}; });
   comps.forEach(finishComp);
   const b={name,files,layers,srcNames,ext:extentOf(layers),paths:null,comps:comps.length?comps:null,regions:regions.length?regions:null,origin:null,originMode:'board',fmt:'ODB++ ('+top+')'};
-  if(project){ b.comps=project.comps||b.comps; b.origin=project.origin||null; b.originKind=project.originKind||null; b.originMode=project.originMode||'board'; b.regions=project.regions||b.regions; b.flipped=project.flipped||[]; b.typeNames=project.typeNames||null; b.fromProject=true; if(b.comps) b.comps.forEach(finishComp); b.refPending=rfPendingFrom(files,project); }
+  if(project){ b.comps=project.comps||b.comps; b.origin=project.origin||null; b.originKind=project.originKind||null; b.originMode=project.originMode||'board'; b.regions=project.regions||b.regions; b.flipped=project.flipped||[]; b.typeNames=project.typeNames||null; b.panel=project.panel||null; b.rotated=project.rotated||{}; b.fromProject=true; if(b.comps) b.comps.forEach(finishComp); b.refPending=rfPendingFrom(files,project); }
   return b; }
 function apMM(a){ const f=v=>+(v*MM).toFixed(2); if(a[0]==='C') return [f(a[1]),f(a[1])]; if(a[0]==='R') return [f(a[1]),f(a[2])];
   if(a[0]==='O') return [f(a[1]+Math.abs(a[4]-a[2])),f(a[1]+Math.abs(a[5]-a[3]))]; return [f(a[1]||0),f(a[1]||0)]; }
@@ -960,8 +967,10 @@ function up(e){pointers.delete(e.pointerId); if(pointers.size<2)pinch=null;
   else if(drag&&!drag.moved){const d=devicePixelRatio; if(rfAlign) rfClick(e.offsetX*d,e.offsetY*d); else if(picking) setOrigin(e.offsetX*d,e.offsetY*d); else pick(e.offsetX*d,e.offsetY*d,drag.shift);} if(pointers.size===0)drag=null;}
 cv.addEventListener('pointerup',up); cv.addEventListener('pointercancel',up);
 function pick(sx,sy,add){const b=B(); if(!b||!b.comps) return; const [wx,wy]=toWorld(sx,sy); let best=null,bd=1e18;
-  for(const c of b.comps){ let d=Math.hypot(c.x-wx,c.y-wy); for(const p of c.pads) d=Math.min(d,Math.hypot(p[0]-wx,p[1]-wy)); if(d<bd){bd=d;best=c;} }
-  if(!add) sel.clear(); if(best&&bd*view.s<30*devicePixelRatio){ if(add&&sel.has(best)) sel.delete(best); else sel.add(best);} updateEditor(); renderTable(); draw();}
+  for(const c of b.comps){ let d=Math.hypot(c.x-wx,c.y-wy); for(const p of c.pads){ const dx=Math.max(Math.abs(p[0]-wx)-p[2]/MM/2,0), dy=Math.max(Math.abs(p[1]-wy)-p[3]/MM/2,0); d=Math.min(d,Math.hypot(dx,dy)); } if(d<bd){bd=d;best=c;} }
+  if(!add) sel.clear(); if(best&&bd*view.s<6*devicePixelRatio){ if(add&&sel.has(best)) sel.delete(best); else sel.add(best);}
+  else if(!add&&b.regions){ const g=b.regions.find(g=>wx>=g.x0&&wx<=g.x1&&wy>=g.y0&&wy<=g.y1); if(g&&String(g.id)!==$('boardSel').value){ b.boardPick=String(g.id); boardOptions(); toast(`보드 ${g.id} 선택`); } }
+  updateEditor(); renderTable(); draw();}
 // ORG snap targets: round/square marks snap to their centre, outline corners snap to the corner point
 function snapTargets(b){ if(b.snaps) return b.snaps; const out=[]; const sz=v=>(v*MM).toFixed(2);
   for(const r of ['drill','top_cu','bot_cu','top_mask','bot_mask','outline','drill_dwg','top_silk','bot_silk']){const L=b.layers[r]; if(!L) continue;
@@ -1166,6 +1175,23 @@ function gMirror(F,cx){ const m=x=>2*cx-x, ap=a=>a[0]==='O'?['O',a[1],-a[2],a[3]
   return {lines:F.lines.map(l=>({ap:ap(l.ap),pts:l.pts.map(([x,y])=>[m(x),y])})),flashes:F.flashes.map(f=>({ap:ap(f.ap),x:m(f.x),y:f.y})),regions:F.regions.map(g=>g.map((v,i)=>i%2?v:m(v)))}; }
 const FLIP_PAIRS=[['top_cu','bot_cu'],['top_mask','bot_mask'],['top_silk','bot_silk'],['top_paste','bot_paste']], FLIP_SELF=['outline','drill','drill_dwg'];
 // turn one board of the array over: top and bottom layers swap, everything mirrored left-right inside the board outline
+function gRot180(F,cx,cy){ const m=([x,y])=>[2*cx-x,2*cy-y], ap=a=>a[0]==='O'?['O',a[1],-a[2],-a[3],-a[4],-a[5]]:a;
+  return {lines:F.lines.map(l=>({ap:ap(l.ap),pts:l.pts.map(m)})),flashes:F.flashes.map(f=>({ap:ap(f.ap),x:2*cx-f.x,y:2*cy-f.y})),regions:F.regions.map(g=>g.map((v,i)=>i%2?2*cy-v:2*cx-v))}; }
+function rotComps(b,id,cx,cy){ if(b.comps) for(const c of b.comps){ if(c.board!==id) continue; c.pads=c.pads.map(p=>[2*cx-p[0],2*cy-p[1],p[2],p[3],p[4]]); if(c.rot!=null) c.rot=((c.rot+180)%360+360)%360; finishComp(c); } }
+// turn one board 180° about its centre, its own cut line included; tabs and rail routing outside the board stay put
+function rotateBoardGerber(b,id){ const g=b.regions&&b.regions.find(g=>g.id===id); if(!g) return {ok:false,msg:'보드 외곽을 찾지 못했습니다'};
+  if(b.fmt) return {ok:false,msg:'ODB++·IPC 보드는 거버 회전을 지원하지 않습니다'};
+  const e=0.25/MM, R=[g.x0-e,g.y0-e,g.x1+e,g.y1+e], cx=(g.x0+g.x1)/2, cy=(g.y0+g.y1)/2, skipped=[], plan=[];
+  for(const r of [...FLIP_PAIRS.flat(),'outline','drill','drill_dwg']){ if(!b.layers[r]) continue; if(!silkFile(b,r)){ skipped.push(ROLES[r][0]); continue; } plan.push(r); }
+  if(!plan.length) return {ok:false,msg:'돌릴 수 있는 거버 레이어가 없습니다'};
+  const grp='rot'+Date.now();
+  for(const r of plan){ const F=gGrab(b,r,R); silkState(b,r); b.silk.ops.push({t:'erase',role:r,rects:[R],grp}); b.silk.ops.push({t:'feat',role:r,feats:gRot180(F,cx,cy),grp,rot:id}); silkRebuild(b,r); }
+  rotComps(b,id,cx,cy); const t=b.rotated||{}; t[id]=((t[id]||0)+1)%2; b.rotated=t; b._tc=null;
+  return {ok:true,n:plan.length,skipped}; }
+// features of one layer wholly inside a box, read from the file itself (same rule the eraser uses)
+function gGrab(b,src,R){ silkState(b,src); const k=silkFile(b,src), s=src==='drill'&&b.silk.shift||[0,0], Rf=[R[0]-s[0],R[1]-s[1],R[2]-s[0],R[3]-s[1]];
+  const E=silkErase(new TextDecoder('latin1').decode(b.files[k]),[Rf]).feats, A=b.layers[src].aps, sh=([x,y])=>[x+s[0],y+s[1]];
+  return {lines:E.lines.filter(l=>A[l.ap]).map(l=>({ap:A[l.ap],pts:l.pts.map(sh)})),flashes:E.flashes.filter(f=>A[f.ap]).map(f=>({ap:A[f.ap],x:f.x+s[0],y:f.y+s[1]})),regions:E.regions.map(r=>r.map((v,i)=>v+(i%2?s[1]:s[0])))}; }
 function flipBoardGerber(b,id){ const g=b.regions&&b.regions.find(g=>g.id===id); if(!g) return {ok:false,msg:'보드 외곽을 찾지 못했습니다'};
   if(b.fmt) return {ok:false,msg:'ODB++·IPC 보드는 거버 뒤집기를 지원하지 않습니다'};
   const e=0.25/MM, R=[g.x0-e,g.y0-e,g.x1+e,g.y1+e], cx=(g.x0+g.x1)/2, skipped=[], plan=[];
@@ -1227,8 +1253,8 @@ function silkAddText(){ const b=B(), role=$('silkRole').value; const pv=silkPrev
 function undoFlipComps(b,id){ const g=b.regions&&b.regions.find(g=>g.id===id); if(!g) return; const cx=(g.x0+g.x1)/2;
   if(b.comps) for(const c of b.comps){ if(c.board!==id) continue; c.pads=c.pads.map(p=>[2*cx-p[0],p[1],p[2],p[3],p[4]]); c.side=c.side==='TOP'?'BOTTOM':'TOP'; if(c.rot!=null) c.rot=((540-c.rot)%360+360)%360; finishComp(c); }
   b.flipped=(b.flipped||[]).filter(x=>x!==id); b._tc=null; }
-function silkReset(all){ const b=B(); if(!b||!b.silk) return; const roles=new Set(b.silk.ops.map(o=>o.role)); if(all) b.silk.ops=[]; else { const last=b.silk.ops.pop(); if(last&&last.grp){ while(b.silk.ops.length&&b.silk.ops[b.silk.ops.length-1].grp===last.grp) b.silk.ops.pop(); if(last.flip!=null) undoFlipComps(b,last.flip); } }
-  if(all) for(const id of [...(b.flipped||[])]) undoFlipComps(b,id);
+function silkReset(all){ const b=B(); if(!b||!b.silk) return; const roles=new Set(b.silk.ops.map(o=>o.role)); if(all) b.silk.ops=[]; else { const last=b.silk.ops.pop(); if(last&&last.grp){ while(b.silk.ops.length&&b.silk.ops[b.silk.ops.length-1].grp===last.grp) b.silk.ops.pop(); if(last.flip!=null) undoFlipComps(b,last.flip); if(last.rot!=null){ const g=b.regions.find(g=>g.id===last.rot); if(g){ rotComps(b,last.rot,(g.x0+g.x1)/2,(g.y0+g.y1)/2); b.rotated[last.rot]=((b.rotated[last.rot]||0)+1)%2; } } } }
+  if(all){ for(const id of [...(b.flipped||[])]) undoFlipComps(b,id); for(const [id,v] of Object.entries(b.rotated||{})) if(v){ const g=b.regions.find(g=>g.id===+id); if(g) rotComps(b,+id,(g.x0+g.x1)/2,(g.y0+g.y1)/2); } b.rotated={}; }
   for(const r of roles) silkRebuild(b,r); SK.last=null; SK.anchor=null; sel.clear(); boardOptions(); renderTable(); updateEditor(); silkUI(); draw(); toast(all?'거버를 원래대로 되돌렸습니다':'수정 하나를 되돌렸습니다'); }
 async function silkSaveZip(){ const b=B(); if(!b||!b.silk||!b.silk.ops.length) return; const zip=new JSZip();
   for(const [k,v] of Object.entries(b.files)){ if(/pcbviewer\.json$|(^|\/)reference\.(jpg|png)$/i.test(k)) continue; zip.file(k,v); }
@@ -1248,7 +1274,7 @@ function closeBoard(n){ if(!boards[n]) return; delete boards[n]; toast(`${n} 을
   const rest=Object.keys(boards); if(n!==cur){ buildTabs(); return; }
   if(rest.length){ select(rest[0]); return; }
   cur=null; sel.clear(); rfAlign=null; buildTabs(); $('layers').innerHTML=''; $('info').innerHTML=''; $('drill').innerHTML=''; $('ptable').innerHTML='';
-  $('editor').hidden=true; $('partsNote').textContent='불러오기로 거버를 여세요'; try{ $('rfCtl').hidden=true; }catch(e){} draw(); }
+  $('editor').hidden=true; $('partsNote').textContent='불러오기로 거버를 여세요'; panelUI(); try{ $('rfCtl').hidden=true; }catch(e){} draw(); }
 function buildLayers(){const b=B(), el=$('layers'); el.innerHTML='';
   const rows=ORDER.filter(r=>b&&b.layers[r]).map(r=>[r,(b.srcNames[r]||[]).join(', '),ROLES[r][0],ROLES[r][1]]);
   rows.push(['parts','부품 중심','추출된 부품 좌표','#00e5ff']);
@@ -1270,25 +1296,25 @@ function copyPitch(b){const R=b.regions||[]; if(R.length<2) return null; const a
   return R.slice(1).map(g=>({id:g.id,dx:(g.x0-a.x0)*MM,dy:(g.y0-a.y0)*MM}));}
 // group array boards into kinds: same outline size and (mostly) the same part positions
 function boardTypes(b){ if(!b||!b.regions) return []; const cs=b.comps||[];
-  if(b._tc&&b._tc.comps===b.comps&&b._tc.len===cs.length&&b._tc.reg===b.regions&&b._tc.fl===JSON.stringify(b.flipped||[])&&b._tc.names===JSON.stringify(b.typeNames||{})) return b._tc.T;
-  const tol=0.5/MM, F=new Set(b.flipped||[]), sig=g=>{const s=new Set(); for(const c of cs) if(c.board===g.id) s.add(Math.round((F.has(g.id)?g.x1-c.x:c.x-g.x0)*MM)+','+Math.round((c.y-g.y0)*MM)); return s;};
+  if(b._tc&&b._tc.comps===b.comps&&b._tc.len===cs.length&&b._tc.reg===b.regions&&b._tc.fl===JSON.stringify([b.flipped||[],b.rotated||{}])&&b._tc.names===JSON.stringify(b.typeNames||{})) return b._tc.T;
+  const tol=0.5/MM, F=new Set(b.flipped||[]), RT=b.rotated||{}, sig=g=>{const s=new Set(), rt=!!RT[g.id], fx=F.has(g.id)!==rt; for(const c of cs) if(c.board===g.id) s.add(Math.round((fx?g.x1-c.x:c.x-g.x0)*MM)+','+Math.round((rt?g.y1-c.y:c.y-g.y0)*MM)); return s;};
   const hit=(a,B)=>{let n=0; for(const k of a){ const [x,y]=k.split(',').map(Number); let f=false; for(let dx=-1;dx<=1&&!f;dx++) for(let dy=-1;dy<=1&&!f;dy++) if(B.has((x+dx)+','+(y+dy))) f=true; if(f) n++; } return n;};
   const same=(A,B)=>{ if(!A.size&&!B.size) return true; if(!A.size||!B.size) return false; return Math.min(hit(A,B),hit(B,A))>=0.8*Math.max(A.size,B.size); };
   const T=[]; for(const g of [...b.regions].sort((p,q)=>p.id-q.id)){ const w=g.x1-g.x0, h=g.y1-g.y0, sg=sig(g);
     let t=T.find(t=>Math.abs(t.w-w)<tol&&Math.abs(t.h-h)<tol&&same(t.sig,sg)); if(!t){ t={w,h,sig:sg,ids:[],rep:g.id}; T.push(t); } t.ids.push(g.id); }
   T.forEach((t,i)=>{ t.key=String.fromCharCode(65+i); t.n=cs.filter(c=>c.board===t.rep).length; t.name=(b.typeNames||{})[t.key]||''; });
-  b._tc={fl:JSON.stringify(b.flipped||[]),comps:b.comps,len:cs.length,reg:b.regions,names:JSON.stringify(b.typeNames||{}),T}; return T; }
+  b._tc={fl:JSON.stringify([b.flipped||[],b.rotated||{}]),comps:b.comps,len:cs.length,reg:b.regions,names:JSON.stringify(b.typeNames||{}),T}; return T; }
 const typeOfBoard=(b,id)=>{ const t=boardTypes(b).find(t=>t.ids.includes(id)); return t?t.key:''; };
 function typeLabel(t){ return '종류 '+t.key+(t.name?' '+t.name:''); }
-function buildTypeList(){ const b=B(), el=$('typeList'), T=boardTypes(b); $('typeZipBtn').hidden=T.length<2; if(!b||!b.comps||T.length<2){ el.hidden=true; el.innerHTML=''; return; }
-  el.hidden=false; el.innerHTML='<div class="tlh">보드 종류별 파트리스트 <small>종류마다 대표 보드 하나만 뽑으면 됩니다</small></div><div class="row" style="margin:4px 0"><button id="typeRead" title="종류마다 대표 보드의 실크를 Claude가 읽어 이름 칸을 채웁니다">실크에서 보드 이름 읽기</button></div>'+T.map(t=>`<div class="tl" data-k="${t.key}"><b>${t.key}</b><span class="tli">보드 ${t.ids.join(', ')} · ${(t.w*MM).toFixed(1)}×${(t.h*MM).toFixed(1)} · 부품 ${t.n}</span><input placeholder="이름 (예: SENSOR B/D)" value="${esc(t.name)}"><div class="row" style="grid-column:1/-1"><button data-a="view">보드 보기</button><button data-a="csv">이 종류 CSV 저장</button></div></div>`).join('');
+function buildTypeList(){ const b=B(), el=$('typeList'), T=boardTypes(b); $('typeZipBtn').hidden=T.length<2; if(!b||!b.comps||!T.length){ el.hidden=true; el.innerHTML=''; return; }
+  el.hidden=false; el.innerHTML=(T.length>1?'<div class="tlh">보드 종류별 파트리스트 <small>종류마다 대표 보드 하나만 뽑으면 됩니다</small></div>':'<div class="tlh">내부 보드 이름</div>')+'<div class="row" style="margin:4px 0"><button id="typeRead" title="종류마다 대표 보드의 실크를 Claude가 읽어 이름 칸을 채웁니다">실크에서 보드 이름 읽기</button><button id="refRead" title="보드마다 따로 실크에서 레퍼런스(C1, U2…)를 Claude가 읽어 ?번호 부품에 붙입니다">실크에서 레퍼런스 읽기</button></div>'+T.map(t=>`<div class="tl" data-k="${t.key}"><b>${t.key}</b><span class="tli">보드 ${t.ids.join(', ')} · ${(t.w*MM).toFixed(1)}×${(t.h*MM).toFixed(1)} · 부품 ${t.n}</span><input placeholder="이름 (예: SENSOR B/D)" value="${esc(t.name)}"><div class="row" style="grid-column:1/-1">${t.ids.map(i=>`<button data-b="${i}" aria-pressed="${String(i)===String(b.boardPick)}">보드 ${i}</button>`).join('')}<button data-a="csv">이 종류 CSV 저장</button></div></div>`).join('');
   el.querySelectorAll('.tl').forEach(row=>{ const k=row.dataset.k, t=T.find(t=>t.key===k);
     row.querySelector('input').onchange=e=>{ b.typeNames=b.typeNames||{}; const v=e.target.value.trim(); if(v) b.typeNames[k]=v; else delete b.typeNames[k]; boardOptions(); };
-    row.querySelector('[data-a=view]').onclick=()=>{ b.boardPick=String(t.rep); boardOptions(); renderTable(); zoomBoard(b,t.rep); };
     row.querySelector('input').dataset.k=k;
+    row.querySelectorAll('[data-b]').forEach(bt=>bt.onclick=()=>{ b.boardPick=bt.dataset.b; boardOptions(); renderTable(); zoomBoard(b,+bt.dataset.b); });
     row.querySelector('[data-a=csv]').onclick=()=>{ const tt=boardTypes(b).find(x=>x.key===k); saveFile(typeFileName(b,tt),csvText(rowsFor(c=>c.board===tt.rep),typeLabel(tt)+' · 대표 보드 '+tt.rep+' (보드 '+tt.ids.join(',')+')')); }; });
-  $('typeRead').onclick=()=>readTypeNames(b,false);
-  if(!b._namesTried&&sampleFn&&sampleCaps&&sampleCaps.images&&T.every(t=>!t.name)){ b._namesTried=true; setTimeout(()=>readTypeNames(b,true),300); } }
+  $('typeRead').onclick=()=>readTypeNames(b,false); $('refRead').onclick=()=>readRefs(b,false);
+  autoReads(b); }
 // white-on-black picture of one board's silk, cropped to its outline
 async function silkPicture(b,id){ const g=b.regions.find(g=>g.id===id); if(!g) return null; const P=getPaths(b);
   const inside=r=>{ const L=b.layers[r]; if(!L) return 0; let n=0; for(const l of L.lines) if(l[1]>=g.x0&&l[1]<=g.x1&&l[2]>=g.y0&&l[2]<=g.y1) n++; return n; };
@@ -1301,6 +1327,63 @@ async function silkPicture(b,id){ const g=b.regions.find(g=>g.id===id); if(!g) r
 const NAME_PROMPT=`이 그림은 PCB 한 장의 실크 인쇄 레이어(흰 글자, 검은 배경)를 보드 외곽에 맞춰 잘라낸 것입니다. 글자가 90° 돌아가 있을 수 있습니다.
 보드 이름(제품·보드 명칭, 예: "SENSOR B/D", "COMBO TOUCH MAIN B/D")을 찾아 주세요. 리비전(Rev1), 날짜, UL·94V-0 표시, 부품 레퍼런스(U1, C3, CN5), 단자 표기(GND, A+, HALL-A)는 이름이 아닙니다.
 JSON 하나만 답하세요: {"name":"보드 이름 그대로, 없으면 빈 문자열","rev":"Rev 표기가 있으면 그대로","confidence":0~1}`;
+// silk on the rails (outside every board outline) as a picture
+async function railPicture(b){ const P=getPaths(b), role=P.top_silk?'top_silk':(P.bot_silk?'bot_silk':null); if(!role) return null; const [x0,y0,x1,y1]=b.ext, w=x1-x0, h=y1-y0, sc=1800/Math.max(w,h);
+  const c=document.createElement('canvas'); c.width=Math.ceil(w*sc); c.height=Math.ceil(h*sc); const x=c.getContext('2d'); x.fillStyle='#000'; x.fillRect(0,0,c.width,c.height);
+  const m=role==='bot_silk'; x.setTransform(m?-sc:sc,0,0,-sc,m?x1*sc:-x0*sc,y1*sc); x.strokeStyle='#fff'; x.fillStyle='#fff';
+  for(const st of P[role].strokes){ x.lineWidth=Math.max(st.w,1.5/sc); x.lineCap=st.cap; x.lineJoin='round'; x.stroke(st.p); } x.fill(P[role].fill,'nonzero');
+  if(b.regions&&b.regions.length){ x.fillStyle='#000'; for(const g of b.regions) x.fillRect(g.x0,g.y0,g.x1-g.x0,g.y1-g.y0); }
+  return await new Promise(ok=>c.toBlob(ok,'image/png')); }
+const PANEL_PROMPT=`이 그림은 PCB 어레이 패널의 실크 인쇄(흰 글자, 검은 배경)에서 보드 부분을 검게 지우고 자삽바(바깥 테두리 레일)만 남긴 것입니다.
+레일에 인쇄된 보드명(제품·패널 이름, 예: "DUV-COMBO_Main", "DS4-48V-D2")과 일자(예: "2025.12.18")를 찾아 주세요. 화살표, 기준 마크, UL 표시는 무시하세요.
+JSON 하나만 답하세요: {"name":"보드명 그대로, 없으면 빈 문자열","date":"일자 그대로, 없으면 빈 문자열"}`;
+function panelUI(){ const b=B(); $('panelName').value=b&&b.panel&&b.panel.name||''; $('panelDate').value=b&&b.panel&&b.panel.date||''; $('pinfo').hidden=!b||(!!b.fmt&&!b.layers.top_silk);
+  if(b) autoReads(b); }
+async function readPanel(b,auto){ if(!sampleFn||!(sampleCaps&&sampleCaps.images)){ if(!auto) toast('이 화면에서는 Claude 판독을 쓸 수 없습니다 (claude.ai에서 열면 됩니다). 직접 입력하세요.'); return; }
+  const btn=$('panelRead'); btn.disabled=true; btn.textContent='읽는 중…';
+  try{ const img=await railPicture(b); if(!img) throw new Error('실크 레이어가 없습니다'); const J=await sampleFn.json(PANEL_PROMPT,{images:[img]});
+    b.panel={name:String(J&&J.name||'').trim(),date:String(J&&J.date||'').trim()}; if(b===B()){ panelUI(); toast(b.panel.name||b.panel.date?`자삽바: ${[b.panel.name,b.panel.date].filter(Boolean).join(' · ')}`:'자삽바에서 보드명·일자를 찾지 못했습니다. 직접 입력하세요.'); } }
+  catch(e){ if(!auto||!(e&&e.code)) toast(e&&e.code==='rate_limited'?'잠시 후 다시 눌러 주세요':(e&&e.code==='not_granted'?'Claude 판독 권한이 없습니다. 직접 입력하세요.':'자삽바를 읽지 못했습니다: '+(e&&e.message||e))); }
+  finally{ btn.disabled=false; btn.textContent='실크에서 읽기'; } }
+// one-time automatic reads after a board opens: rail name/date, board names, then references
+async function autoReads(b){ if(b._autoRun||!sampleFn||!(sampleCaps&&sampleCaps.images)||!b.comps||b.fmt) return; b._autoRun=true; await new Promise(r=>setTimeout(r,400));
+  try{ if(!(b.panel&&(b.panel.name||b.panel.date))) await readPanel(b,true);
+    if(boardTypes(b).every(t=>!t.name)) await readTypeNames(b,true);
+    if(b.comps.some(c=>c.refSrc==='auto')) await readRefs(b,true); }catch(e){ console.warn('auto read',e); } }
+// silk of one board cut into overlapping tiles small enough for reference text to stay legible
+function silkTiles(b,g,role){ const P=getPaths(b)[role]; if(!P) return []; const pxmm=18, T=46/MM, ov=5/MM, pad=1/MM, sc=pxmm*MM;
+  const X0=g.x0-pad, Y0=g.y0-pad, X1=g.x1+pad, Y1=g.y1+pad, nx=Math.max(1,Math.ceil((X1-X0-ov)/(T-ov))), ny=Math.max(1,Math.ceil((Y1-Y0-ov)/(T-ov))), tw=(X1-X0+ov*(nx-1))/nx, th=(Y1-Y0+ov*(ny-1))/ny, out=[];
+  for(let i=0;i<nx;i++) for(let j=0;j<ny;j++){ const tx0=X0+i*(tw-ov), ty0=Y0+j*(th-ov), tx1=tx0+tw, ty1=ty0+th, m=role==='bot_silk';
+    const c=document.createElement('canvas'); c.width=Math.ceil(tw*sc); c.height=Math.ceil(th*sc); const x=c.getContext('2d'); x.fillStyle='#000'; x.fillRect(0,0,c.width,c.height);
+    x.setTransform(m?-sc:sc,0,0,-sc,m?tx1*sc:-tx0*sc,ty1*sc); x.strokeStyle='#fff'; x.fillStyle='#fff';
+    for(const st of P.strokes){ x.lineWidth=Math.max(st.w,1/sc); x.lineCap=st.cap; x.lineJoin='round'; x.stroke(st.p); } x.fill(P.fill,'nonzero');
+    const d=x.getImageData(0,0,c.width,c.height).data; let ink=0; for(let k=0;k<d.length;k+=64) if(d[k]>127) ink++; if(ink<30) continue;
+    out.push({c,map:(px,py)=>[m?tx1-px/sc:tx0+px/sc, ty1-py/sc]}); }
+  return out; }
+const REF_PROMPT=`이 그림은 PCB 실크 인쇄(흰 글자, 검은 배경)의 일부입니다. 부품 레퍼런스(예: C1, R12, U3, CN5, D2, L1, Q1, FET1, SW1, J1, LED3, ZD1, F1, X1, BZ1)를 모두 찾아 주세요.
+글자가 90°·180° 돌아가 있거나 뒤집혀 있을 수 있습니다. 값(10K, 100nF), 단자·신호 이름(GND, VCC, +24V, A+, HALL-A, OUT), 보드 이름, 날짜, UL 표시는 빼세요.
+각 레퍼런스 글자의 가운데 위치를 이 그림의 픽셀 좌표(왼쪽 위가 0,0)로 주세요. JSON 하나만 답하세요: {"refs":[{"ref":"C1","x":123,"y":45}]}`;
+async function readRefs(b,auto){ if(!sampleFn||!(sampleCaps&&sampleCaps.images)){ if(!auto) toast('이 화면에서는 Claude 판독을 쓸 수 없습니다 (claude.ai에서 열면 됩니다). 레퍼런스는 부품을 클릭해 직접 입력하세요.'); return; }
+  if(!b.comps||!b.regions) return; const order=b.regions.map(g=>g.id).sort((x,y)=>x-y); // every board on its own: copies can carry different references (U11 vs U2)
+  if(!b.comps.some(c=>c.refSrc==='auto')){ if(!auto) toast('?번호 부품이 없습니다'); return; }
+  const btn=$('refRead'); if(btn) btn.disabled=true; let n=0, fail=0, stop=false, k=0;
+  for(const id of order){ if(stop) break; k++; const g=b.regions.find(g=>g.id===id), cs=b.comps.filter(c=>c.board===id); if(!g||!cs.some(c=>c.refSrc==='auto')) continue;
+    const jobs=[]; for(const [role,side] of [['top_silk','TOP'],['bot_silk','BOTTOM']]){ if(!cs.some(c=>c.side===side&&c.refSrc==='auto')) continue; for(const tl of silkTiles(b,g,role)) jobs.push({side,tl}); }
+    const L=[];
+    for(let q=0;q<jobs.length;q++){ const jb=jobs[q], msg=`보드 ${id} 레퍼런스 읽는 중 ${q+1}/${jobs.length} (보드 ${k}/${order.length})`; if(btn) btn.textContent=msg; if(b===B()) $('partsNote').textContent=msg+'…';
+      try{ const blob=await new Promise(ok=>jb.tl.c.toBlob(ok,'image/png')); const J=await sampleFn.json(REF_PROMPT,{images:[blob]});
+        for(const r of (J&&J.refs)||[]){ const ref=String(r.ref||'').trim().toUpperCase(); if(!/^[A-Z]{1,4}\d{1,4}[A-Z]?$/.test(ref)||!isFinite(r.x)||!isFinite(r.y)) continue; const [x,y]=jb.tl.map(+r.x,+r.y);
+          if(x<g.x0-1/MM||x>g.x1+1/MM||y<g.y0-1/MM||y>g.y1+1/MM) continue; if(L.some(l=>l.ref===ref&&l.side===jb.side&&Math.hypot(l.x-x,l.y-y)<3/MM)) continue; L.push({ref,x,y,side:jb.side}); } }
+      catch(e){ fail++; if(e&&(e.code==='not_granted'||e.code==='rate_limited')){ toast(e.code==='rate_limited'?'잠시 후 다시 눌러 주세요':'Claude 판독 권한이 없습니다'); stop=true; break; } console.warn('ref read',e); } }
+    const used=new Set(cs.filter(c=>c.refSrc!=='auto').map(c=>c.ref)), cand=[];
+    L.forEach((l,li)=>{ if(used.has(l.ref)) return; cs.forEach((c,ci)=>{ if(c.refSrc!=='auto'||c.side!==l.side) return; let d=Math.hypot(c.x-l.x,c.y-l.y); for(const p of c.pads) d=Math.min(d,Math.hypot(p[0]-l.x,p[1]-l.y)); if(d*MM<6) cand.push([d,li,ci]); }); });
+    cand.sort((a,c)=>a[0]-c[0]); const lu=new Set(), cu=new Set();
+    for(const [d,li,ci] of cand){ if(lu.has(li)||cu.has(ci)) continue; lu.add(li); cu.add(ci); const c=cs[ci]; c.ref=L[li].ref; c.refSrc='ai'; n++; }
+    // whatever is still unread on this board gets ?numbers counted per board
+    let m=0; for(const c of cs.filter(c=>c.refSrc==='auto').sort((a,c)=>Math.round((c.y-a.y)/400)||a.x-c.x)) c.ref='?'+(++m);
+    if(b===B()){ renderTable(); draw(); } }
+  if(btn){ btn.disabled=false; btn.textContent='실크에서 레퍼런스 읽기'; }
+  if(b===B()){ renderTable(); draw(); const left=b.comps.filter(c=>c.refSrc==='auto').length; toast(n?`실크에서 레퍼런스 ${n}개를 읽어 붙였습니다 (하늘색)`+(left?` · 남은 ?번호 ${left}개는 부품을 클릭해 직접 입력하세요`:''):'실크에서 붙일 레퍼런스를 찾지 못했습니다'+(fail?` (실패 ${fail}건)`:'')); } }
 async function readTypeNames(b,auto){ if(!sampleFn||!(sampleCaps&&sampleCaps.images)){ if(!auto) toast('이 화면에서는 Claude 판독을 쓸 수 없습니다 (claude.ai에서 열면 됩니다). 이름은 직접 입력하세요.'); return; }
   const T=boardTypes(b); const btn=$('typeRead'); if(btn){ btn.disabled=true; btn.textContent='읽는 중…'; } let got=0;
   for(const t of T){ if(auto&&t.name) continue;
@@ -1311,7 +1394,7 @@ async function readTypeNames(b,auto){ if(!sampleFn||!(sampleCaps&&sampleCaps.ima
 const typeFileName=(b,t)=>`${b.name}_종류${t.key}${t.name?'_'+t.name.replace(/[\\/:*?"<>|]/g,'_'):''}_좌표.csv`;
 function boardOptions(){const b=B(), s=$('boardSel'); const cp=copyPitch(b), T=boardTypes(b), multi=T.length>1;
   s.innerHTML='<option value="">모든 보드</option>'+(b.regions||[]).map(g=>{ const t=T.find(t=>t.ids.includes(g.id)); return `<option value="${g.id}">보드 ${g.id}${multi&&t?' · '+esc(typeLabel(t)):''}${(cp&&g.id===1)||(multi&&t&&t.rep===g.id&&t.ids.length>1)?' (대표)':''}${(b.flipped||[]).includes(g.id)?' · 면 바뀜':''}</option>`; }).join('');
-  if(b.boardPick==null&&b.regions) b.boardPick=cp?'1':''; s.value=b.boardPick||''; if(![...s.options].some(o=>o.value===s.value)) s.value=''; $('flipBoardBtn').disabled=!s.value||!!b.fmt; buildTypeList();}
+  if(b.boardPick==null&&b.regions) b.boardPick=cp?'1':''; s.value=b.boardPick||''; if(![...s.options].some(o=>o.value===s.value)) s.value=''; $('flipBoardBtn').disabled=!s.value||!!b.fmt; $('rotBoardBtn').disabled=!s.value||!!b.fmt; buildTypeList();}
 function natural(a,c){return a.localeCompare(c,undefined,{numeric:true});}
 function rowsFor(flt){const b=B(); if(!b||!b.comps) return []; const mir=$('mirrorBot').checked;
   return b.comps.filter(flt||passes).map(c=>{const o=originFor(c); let x=(c.x-o[0])*MM, y=(c.y-o[1])*MM;
@@ -1321,7 +1404,7 @@ function renderTable(){const rows=rowsFor(), b=B();
   const auto=b&&b.comps?b.comps.filter(c=>c.refSrc==='auto').length:0;
   const nS=rows.filter(r=>r.type==='SMD').length; $('partsNote').textContent=!b||!b.comps?'':`${rows.length}개 표시 (SMD ${nS} · DIP ${rows.length-nS}). `+(auto?`주황색 ?번호 ${auto}개는 실크에 레퍼런스가 없어 임시 번호입니다. 클릭해서 회로도 레퍼런스로 바꾸세요.`:(b.comps.some(c=>c.refSrc==='odb')?'레퍼런스·좌표·회전은 ODB++ 부품 데이터 그대로입니다.':b.comps.some(c=>c.refSrc==='ipc')?'레퍼런스·핀 위치는 IPC-356 넷리스트에서 왔습니다'+(b.ipcFit&&b.ipcFit[0]<b.ipcFit[1]*0.6?' (주의: 넷리스트 패드가 거버 패드와 잘 맞지 않습니다. 같은 리비전인지 확인하세요)':'')+'.':'모든 부품에 실크 레퍼런스가 붙었습니다.'))+(()=>{const T=boardTypes(b); if(T.length>1) return ` 보드 종류 ${T.length}개 (${T.map(t=>t.key+': 보드 '+t.ids.join(',')).join(' · ')}). 아래 종류별 목록에서 따로 저장하세요.`; const cp=copyPitch(b); return cp?` 같은 제품 ${cp.length+1}연배열이라 보드 1만 뽑으면 됩니다. 장비 배열 간격: `+cp.map(o=>`보드${o.id} X ${o.dx.toFixed(3)} · Y ${o.dy.toFixed(3)} mm`).join(', ')+'.':'';})();
   let h='<tr><th>Ref</th><th>값</th><th>보드</th><th>면</th><th>X mm</th><th>Y mm</th><th>회전</th><th>패드</th></tr>';
-  for(const r of rows) h+=`<tr data-i="${b.comps.indexOf(r.c)}" class="${sel.has(r.c)?'sel':''}"><td class="${r.c.refSrc==='auto'?'auto':''}">${esc(r.ref)}</td><td title="${esc(r.c.marking||'')}">${esc(r.c.value||r.c.marking||'')}</td><td>${r.board}</td><td>${r.side==='TOP'?'T':'B'}·${r.type}</td><td>${r.x.toFixed(3)}</td><td>${r.y.toFixed(3)}</td><td>${r.rot}</td><td>${r.pads}</td></tr>`;
+  for(const r of rows) h+=`<tr data-i="${b.comps.indexOf(r.c)}" class="${sel.has(r.c)?'sel':''}"><td class="${r.c.refSrc==='auto'?'auto':r.c.refSrc==='ai'?'ai':''}" title="${esc(SRCNAME[r.c.refSrc]||'임시 번호')}">${esc(r.ref)}</td><td title="${esc(r.c.marking||'')}">${esc(r.c.value||r.c.marking||'')}</td><td>${r.board}</td><td>${r.side==='TOP'?'T':'B'}·${r.type}</td><td>${r.x.toFixed(3)}</td><td>${r.y.toFixed(3)}</td><td>${r.rot}</td><td>${r.pads}</td></tr>`;
   $('ptable').innerHTML=h;}
 function esc(s){return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
 $('ptable').addEventListener('click',e=>{const tr=e.target.closest('tr[data-i]'); if(!tr) return; const c=B().comps[+tr.dataset.i];
@@ -1340,7 +1423,7 @@ function twins(c){const b=B(); if(!$('syncAll').checked||!b.regions) return [];
     if(best) out.push(best); }
   return out;}
 const withTwins=cs=>{const all=new Set(cs); for(const c of cs) for(const t of twins(c)) all.add(t); return [...all];};
-$('refIn').addEventListener('change',e=>{const c=[...sel][0]; if(!c) return; const v=e.target.value.trim(); if(!v) return; for(const x of withTwins([c])){x.ref=v; x.refSrc='edit';} renderTable(); draw();});
+$('refIn').addEventListener('change',e=>{const c=[...sel][0]; if(!c) return; const v=e.target.value.trim(); if(!v) return; c.ref=v; c.refSrc='edit'; renderTable(); draw();}); // references stay per board: array copies can be numbered differently
 $('kindIn').addEventListener('change',e=>{const cs=withTwins([...sel]); for(const c of cs) c.kind=e.target.value; renderTable(); draw(); toast(`${cs.length}개를 ${e.target.value}로 바꿨습니다`);});
 $('sideIn').addEventListener('change',e=>{const cs=withTwins([...sel]), b=B(), F=new Set(b.flipped||[]), v=e.target.value, ref=[...sel][0], o=v==='TOP'?'BOTTOM':'TOP'; for(const c of cs) c.side=(F.has(c.board)!==F.has(ref.board))?o:v; updateEditor(); renderTable(); draw(); toast(`${cs.length}개를 ${e.target.value} 실장으로 바꿨습니다`);});
 $('rotIn').addEventListener('change',e=>{ if(!sel.size||e.target.value==='') return; const v=((+e.target.value||0)%360+360)%360; const cs=withTwins([...sel]); for(const x of cs) x.rot=v; renderTable(); draw(); if(sel.size>1) toast(`${cs.length}개 부품의 회전을 ${v}°로 바꿨습니다`);});
@@ -1365,16 +1448,21 @@ $('splitBtn').onclick=()=>{const b=B(), c=[...sel][0]; const parts=c.pads.map((p
   b.comps=b.comps.filter(x=>x!==c).concat(parts); sel=new Set(parts); updateEditor(); renderTable(); draw(); buildInfo();};
 $('delBtn').onclick=()=>{const b=B(); const gone=new Set(withTwins([...sel])); b.comps=b.comps.filter(c=>!gone.has(c)); sel.clear(); updateEditor(); renderTable(); draw(); buildInfo();};
 $('reExtract').onclick=async()=>{const b=B(); b.comps=null; b.snaps=null; sel.clear(); await ensureParts(b); toast('자동 추출을 다시 했습니다. 편집 내용은 초기화됐습니다.');};
-$('boardSel').onchange=()=>{B().boardPick=$('boardSel').value; $('flipBoardBtn').disabled=!B().boardPick||!!B().fmt; renderTable();draw();};
+$('boardSel').onchange=()=>{B().boardPick=$('boardSel').value; $('flipBoardBtn').disabled=!B().boardPick||!!B().fmt; $('rotBoardBtn').disabled=!B().boardPick||!!B().fmt; renderTable();draw();};
 $('silkRole').onchange=()=>{ SK.last=null; SK.anchor=null; if(!on.has($('silkRole').value)){ on.add($('silkRole').value); buildLayers(); } silkUI(); draw(); };
 $('silkBox').onclick=()=>{ SK.mode=SK.mode==='box'?null:'box'; picking=false; rfAlign=null; const r=$('silkRole').value; if(SK.mode&&!on.has(r)){ on.add(r); buildLayers(); } silkUI(); draw(); if(SK.mode) toast('지울 글자를 감싸도록 드래그하세요. 선이 상자 안에 통째로 들어가야 지워집니다.'); };
 $('silkPlace').onclick=()=>{ SK.mode=SK.mode==='place'?null:'place'; silkUI(); if(SK.mode) toast('글자의 왼쪽 아래가 올 자리를 클릭하세요'); };
 for(const id of ['silkText','silkH','silkRot','silkFit','silkFont','silkW']) $(id).addEventListener('input',()=>draw());
 $('silkText').addEventListener('keydown',e=>{ if(e.key==='Enter') silkAddText(); });
 $('silkAdd').onclick=silkAddText; $('silkUndo').onclick=()=>silkReset(false); $('silkReset').onclick=()=>silkReset(true); $('silkSave').onclick=silkSaveZip;
+$('panelRead').onclick=()=>{ const b=B(); if(b) readPanel(b,false); };
+for(const [id,k] of [['panelName','name'],['panelDate','date']]) $(id).addEventListener('change',e=>{ const b=B(); if(!b) return; b.panel=b.panel||{}; b.panel[k]=e.target.value.trim(); });
 $('typeZipBtn').onclick=async()=>{ const b=B(), T=boardTypes(b); if(!b||!b.comps||T.length<2) return; const zip=new JSZip();
   for(const t of T) zip.file(typeFileName(b,t),csvText(rowsFor(c=>c.board===t.rep),typeLabel(t)+' · 대표 보드 '+t.rep+' (보드 '+t.ids.join(',')+')'));
   saveFile(b.name+'_종류별_파트리스트.zip',await zip.generateAsync({type:'blob',compression:'DEFLATE'})); };
+$('rotBoardBtn').onclick=()=>{const b=B(), id=+$('boardSel').value; if(!b||!id) return; const r=rotateBoardGerber(b,id); if(!r.ok){ toast(r.msg); return; }
+  sel.clear(); buildLayers(); boardOptions(); updateEditor(); renderTable(); silkUI(); draw();
+  toast(`보드 ${id}를 180° 돌렸습니다 (레이어 ${r.n}개, 자르는 선 포함 · 탭·재봉선은 그대로)`+(r.skipped.length?` · 그대로 둔 레이어: ${r.skipped.join(', ')}`:'')+'. 저장 ▾ → 수정한 거버 ZIP');};
 $('flipBoardBtn').onclick=()=>{const b=B(), id=+$('boardSel').value; if(!b||!id) return; const r=flipBoardGerber(b,id); if(!r.ok){ toast(r.msg); return; }
   sel.clear(); buildLayers(); boardOptions(); updateEditor(); renderTable(); silkUI(); draw();
   toast(`보드 ${id}의 거버를 위아래로 뒤집었습니다 (레이어 ${r.n}개)`+(r.skipped.length?` · 짝이 없어 그대로 둔 레이어: ${r.skipped.join(', ')}`:'')+'. 저장 ▾ → 수정한 거버 ZIP');}; $('sideSel').onchange=()=>{renderTable();draw();}; $('typeSel').onchange=()=>{renderTable();draw();}; $('mirrorBot').onchange=renderTable;
@@ -1387,16 +1475,16 @@ $('allOn').onclick=()=>setLayers([...ORDER.filter(r=>r!=='drill_dwg'),'parts']);
 async function ensureParts(b){ if(b.comps){renderAll();return;} $('busy').hidden=false; await tick(); await tick();
   try{ await extract(b); if(b.ipc) applyIpc(b); b.snaps=null; }catch(e){console.error(e); toast('부품 좌표를 계산하지 못했습니다: '+e.message); b.comps=[]; b.regions=[];}
   $('busy').hidden=true; if(b===B()) renderAll(); }
-function renderAll(){buildInfo(); boardOptions(); syncOriginUI(); renderTable(); updateEditor(); draw();}
+function renderAll(){panelUI(); buildInfo(); boardOptions(); syncOriginUI(); renderTable(); updateEditor(); draw();}
 async function select(n){cur=n; sel.clear(); rfAlign=null; if(boards[n]&&boards[n].refPending) rfRestore(boards[n]); setTimeout(rfUI,0); SK.mode=null; SK.box=null; SK.last=null; SK.anchor=null; setTimeout(silkUI,0); buildTabs(); buildLayers(); renderAll(); fit(); ensureParts(B());}
 
 /* ---------- files ---------- */
-const SRCNAME={silk:'실크',edit:'수정',odb:'ODB++',ipc:'IPC-356'};
-function csvText(rows,label){const b=B(); rows=rows||rowsFor(); const o=b.originMode;
+const SRCNAME={silk:'실크',ai:'실크(Claude)',edit:'수정',odb:'ODB++',ipc:'IPC-356'};
+function csvText(rows,label){const b=B(); rows=rows||rowsFor(); const o=b.originMode; if(!label){ const T=boardTypes(b); if(T.length===1&&T[0].name) label='보드 '+T[0].name; }
   const head=['Ref','Board','Side','Type','X(mm)','Y(mm)','Rotation','Pads','PadSize(mm)','RefSource','Part','Value','Marking'];
   const lines=[head.join(',')];
   for(const r of rows) lines.push([r.ref,r.board,r.side,r.type,r.x.toFixed(3),r.y.toFixed(3),r.rot,r.pads,r.size,SRCNAME[r.c.refSrc]||'임시',r.c.part||'',r.c.value||'',r.c.marking||''].map(v=>/[",]/.test(String(v))?`"${String(v).replace(/"/g,'""')}"`:v).join(','));
-  return '﻿'+`# ${b.name}${label?' · '+label:''}, 원점: ${o==='board'?'보드별 좌하단':o==='panel'?'패널 좌하단':'ORG '+(b.originKind||'')+' (거버 '+(b.origin[0]*MM).toFixed(3)+' '+(b.origin[1]*MM).toFixed(3)+' mm)'}, 단위 mm${$('mirrorBot').checked?', BOTTOM X 미러':''}\n`+lines.join('\r\n')+'\r\n';}
+  return '﻿'+`# ${b.name}${b.panel&&(b.panel.name||b.panel.date)?' · 자삽바 '+[b.panel.name,b.panel.date].filter(Boolean).join(' '):''}${label?' · '+label:''}, 원점: ${o==='board'?'보드별 좌하단':o==='panel'?'패널 좌하단':'ORG '+(b.originKind||'')+' (거버 '+(b.origin[0]*MM).toFixed(3)+' '+(b.origin[1]*MM).toFixed(3)+' mm)'}, 단위 mm${$('mirrorBot').checked?', BOTTOM X 미러':''}\n`+lines.join('\r\n')+'\r\n';}
 let dl=null; (async()=>{try{dl=window.claude?await window.claude.use('downloads'):null;}catch(e){dl=null;}})();
 async function saveFile(filename,data){
   if(dl){ try{ await dl.save({filename,data}); toast(filename+' 저장했습니다'); return; }catch(e){ if(e&&e.code==='declined'){toast('저장을 취소했습니다');return;} if(e&&e.code==='rate_limited'){toast('잠시 후 다시 눌러 주세요');return;} } }
@@ -1412,7 +1500,7 @@ $('saveForm').addEventListener('submit',async e=>{e.preventDefault(); const b=B(
   const zip=new JSZip(); for(const [fn,bytes] of Object.entries(b.files)) if(!/pcbviewer\.json$|_좌표\.csv$/i.test(fn)) zip.file(fn,bytes);
   if(b.comps){ zip.file(name+'_좌표.csv',csvText()); }
   for(const k of Object.keys(b.files)) if(/(^|\/)reference\.(jpg|png)$/i.test(k)) delete b.files[k];
-  zip.file('pcbviewer.json',JSON.stringify({app:'일렉트레이너 PCB뷰어',version:1,name,source:b.name,savedAt:new Date().toISOString(),originMode:b.originMode,origin:b.origin,originKind:b.originKind,regions:b.regions,flipped:b.flipped&&b.flipped.length?b.flipped:undefined,typeNames:b.typeNames,ref:b.ref?{name:b.ref.name,A:b.ref.A,alpha:b.ref.alpha,above:b.ref.above,mirror:b.ref.mirror}:undefined,
+  zip.file('pcbviewer.json',JSON.stringify({app:'일렉트레이너 PCB뷰어',version:1,name,source:b.name,savedAt:new Date().toISOString(),originMode:b.originMode,origin:b.origin,originKind:b.originKind,regions:b.regions,flipped:b.flipped&&b.flipped.length?b.flipped:undefined,typeNames:b.typeNames,panel:b.panel,rotated:b.rotated,ref:b.ref?{name:b.ref.name,A:b.ref.A,alpha:b.ref.alpha,above:b.ref.above,mirror:b.ref.mirror}:undefined,
     comps:(b.comps||[]).map(c=>({ref:c.ref,refSrc:c.refSrc,part:c.part||undefined,value:c.value||undefined,marking:c.marking||undefined,kind:c.kind||undefined,board:c.board,side:c.side,rot:c.rot,how:c.how,pads:c.pads}))}));
   if(b.ref&&b.ref.cv){ const jb=await new Promise(ok=>b.ref.cv.toBlob(ok,'image/jpeg',0.9)); zip.file('reference.jpg',new Uint8Array(await jb.arrayBuffer())); }
   const blob=await zip.generateAsync({type:'blob',compression:'DEFLATE'});
