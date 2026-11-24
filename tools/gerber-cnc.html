@@ -8953,7 +8953,7 @@ cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId); pointer
   if(v3.on){ drag.act='rot3'; return; }
   if(picking) return;
   { const hd=handleAt(w); if(hd&&!e.shiftKey&&['select','rect','circle','hole'].includes(mode)){ drag.act='resize'; drag.hd=hd; return; } }
-  if(mode==='select'||((mode==='rect'||mode==='circle'||mode==='hole')&&hitTest(w))){ const h=hitTest(w); if(h){ if(!selset.has(h)&&!e.shiftKey){selset=new Set([h]);} else if(e.shiftKey&&!selset.has(h)) selset.add(h); drag.act='move'; drag.items=[...selset].map(it=>({it,pts:it.pts?it.pts.map(q=>q.slice()):null,x:it.x,y:it.y,shape:it.shape?{...it.shape}:null})); renderEdit(); draw(); } }
+  if(mode==='select'||((mode==='rect'||mode==='circle'||mode==='hole')&&hitTest(w))){ const h=hitTest(w); if(h){ if(!selset.has(h)&&!e.shiftKey){selset=new Set([h]);} else if(e.shiftKey&&!selset.has(h)) selset.add(h); else if(e.shiftKey) drag.off=h; drag.act='move'; drag.items=[...selset].map(it=>({it,pts:it.pts?it.pts.map(q=>q.slice()):null,x:it.x,y:it.y,shape:it.shape?{...it.shape}:null})); renderEdit(); draw(); } }
   else if(mode==='rect'||mode==='circle'){ drag.act='shape'; drag.s0=snapW(w); } });
 cv.addEventListener('pointermove',e=>{const d=devicePixelRatio; readout(e.offsetX*d,e.offsetY*d); if(mode==='measure'&&!v3.on&&!pointers.size){ meas.hover=measSnap(toW(e.offsetX*d,e.offsetY*d)); if(meas.a&&!meas.b) $('modeNote').textContent=measText(meas.a,meas.hover.p); draw(); } if(!pointers.has(e.pointerId)) return; pointers.set(e.pointerId,[e.offsetX,e.offsetY]);
   if(pointers.size===2&&pinch){const [a,c]=[...pointers.values()], nd=Math.hypot(a[0]-c[0],a[1]-c[1]); zoomAt((a[0]+c[0])/2*d,(a[1]+c[1])/2*d,nd/pinch); pinch=nd; drag.moved=true; return;}
@@ -8967,7 +8967,7 @@ cv.addEventListener('pointermove',e=>{const d=devicePixelRatio; readout(e.offset
 function up(e){ pointers.delete(e.pointerId); if(pointers.size<2)pinch=null; const d=devicePixelRatio;
   if(drag){ const w=toW(e.offsetX*d,e.offsetY*d);
     if(!drag.moved&&v3.on){}
-    else if(!drag.moved){ if(picking) pickOrigin(w); else if(mode==='toggle') toggleAt(w); else if(mode==='hole'&&drag.act!=='move') addHole(snapW(w)); else if(mode==='measure') measClick(w); else if(mode==='start') setStartAt(w); else if(mode==='select'&&drag.act!=='move'){ selset.clear(); renderEdit(); draw(); } else if(mode==='select'&&drag.shift){} }
+    else if(!drag.moved){ if(picking) pickOrigin(w); else if(mode==='toggle') toggleAt(w); else if(mode==='hole'&&drag.act!=='move') addHole(snapW(w)); else if(mode==='measure') measClick(w); else if(mode==='start') setStartAt(w); else if(mode==='select'&&drag.act!=='move'){ selset.clear(); renderEdit(); draw(); } else if(mode==='select'&&drag.shift&&drag.off){ selset.delete(drag.off); renderEdit(); draw(); } }
     else if((drag.act==='move'||drag.act==='resize')&&drag.live){ relayout(B()); refresh(); renderEdit(); }
     else if(drag.act==='shape'&&ghost){ const g=ghost; ghost=null; if(g.w>0.5/MM*0+G*5&&(g.type==='circle'||g.h>G*5)) addShape(g); else draw(); } }
   if(pointers.size===0) drag=null; }
@@ -9015,10 +9015,11 @@ function renderEdit(){const el=$('editBox'), b=B(); if(!b){el.innerHTML='';retur
   if(items.length) h+=`<div class="row" style="margin-top:6px"><button id="eDel">삭제</button><span class="note">숫자를 바꾸면 바로 움직입니다</span></div>`;
   el.innerHTML=h; if(!items.length) return;
   $('eDel').onclick=delSel;
+  if(items.length) el.appendChild(commonSettings(items));
   const drs=items.filter(it=>!it.pts||(it.drill&&isCircle(it))); if(drs.length){ const hd=document.createElement('div'); hd.style.marginTop='6px'; const tl=document.createElement('div'); tl.className='note'; tl.textContent=`드릴 설정 (선택 ${drs.length}개, 비우면 기본값)`; hd.append(tl,drillInputs(drs,()=>buildLoopsUI())); el.appendChild(hd); }
   if(circs.length){ const setD=v=>{ pushHist(); for(const L of circs){ L.drill=v; if(!v&&L.side==='drill') L.side='in'; } buildLoopsUI(); refresh(); toast(`원 ${circs.length}개를 ${v?'드릴(중심 찍기)':'엔드밀(안쪽 윤곽)'}로 가공합니다`); }; $('eDrill').onclick=()=>setD(true); $('eMill').onclick=()=>setD(false); }
   // live: every keystroke / spinner step moves the item; one undo step per edit session (focus → blur)
-  let pushed=false, tmr=null; el.querySelectorAll('input:not(.drillset input)').forEach(inp=>{ inp.addEventListener('focus',()=>{pushed=false;}); inp.addEventListener('input',()=>{ if(inp.value===''||isNaN(+inp.value)) return; if(!pushed){pushHist(); pushed=true;} apply(); clearTimeout(tmr); tmr=setTimeout(()=>refresh(),120); }); });
+  let pushed=false, tmr=null; el.querySelectorAll('input:not(.drillset input):not(.cset input)').forEach(inp=>{ inp.addEventListener('focus',()=>{pushed=false;}); inp.addEventListener('input',()=>{ if(inp.value===''||isNaN(+inp.value)) return; if(!pushed){pushHist(); pushed=true;} apply(); clearTimeout(tmr); tmr=setTimeout(()=>refresh(),120); }); });
   const apply=()=>{ const v=id=>{const i=$(id); return i?(+i.value)/MM:null;};
     if(items.length===1&&!items[0].pts){ const it=items[0]; it.x=o[0]+v('eX'); it.y=o[1]+v('eY'); it.key=Math.round(it.x)+','+Math.round(it.y); }
     else if(items.length===1&&items[0].shape){ const L=items[0], sh=L.shape; if(sh.type==='rect'){ sh.x=o[0]+v('eX'); sh.y=o[1]+v('eY'); sh.w=Math.max(G,v('eW')); sh.h=Math.max(G,v('eH')); sh.r=Math.max(0,v('eR')); } else { sh.cx=o[0]+v('eX'); sh.cy=o[1]+v('eY'); sh.r=Math.max(G,v('eD')/2); } L.pts=shapePts(sh); }
@@ -9099,6 +9100,23 @@ function renderGroups(force){ const el=$('grpList'); if(!el) return; const b=B()
     el.appendChild(r); } }
 $('grpAdd').onclick=()=>{ const id=Math.max(...TG.map(g=>g.id))+1; TG.push({id,tool:+$('tool').value}); saveTG(); renderGroups(); toast(`T${id} 그룹을 만들었습니다. 공구 지름을 넣고 항목을 지정하세요`); };
 $('tcMode').onchange=()=>{ try{localStorage.setItem('cnc.tcMode',$('tcMode').value);}catch(e){} }; try{ const v=localStorage.getItem('cnc.tcMode'); if(v) $('tcMode').value=v; }catch(e){}
+// one panel for everything selected (Shift+click adds): a change is applied to all of them alike
+function commonSettings(items){ const box=document.createElement('div'); box.className='cset'; box.style.cssText='margin-top:8px;padding:6px;border:1px solid var(--line,#3d4236);border-radius:6px;display:grid;grid-template-columns:auto 1fr;gap:5px 8px;align-items:center;font-size:12px';
+  const loops=items.filter(it=>it.pts), circ=loops.length&&loops.every(isCircle); const same=f=>{ const v=[...new Set(items.map(f))]; return v.length===1?v[0]:undefined; }; const sameL=f=>{ const v=[...new Set(loops.map(f))]; return v.length===1?v[0]:undefined; };
+  const title=document.createElement('div'); title.style.gridColumn='1/-1'; title.className='note'; title.textContent=`공통 설정 (선택 ${items.length}개${items.length>1?', Shift+클릭으로 추가·빼기':''}) — 바꾸면 모두 같게`; box.appendChild(title);
+  const row=(lab,ctl)=>{ const l=document.createElement('span'); l.className='note'; l.textContent=lab; box.append(l,ctl); };
+  const sel=(opts,cur,on)=>{ const s=document.createElement('select'); s.style.cssText='font-size:12px;padding:2px 4px'; if(cur===undefined) opts=[['','(여러 값)'],...opts]; s.innerHTML=opts.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join(''); s.value=cur===undefined?'':cur; s.onchange=()=>{ if(s.value==='') return; pushHist(); on(s.value); buildLoopsUI(); refresh(); renderEdit(); }; return s; };
+  const chk=(cur,on)=>{ const c=document.createElement('input'); c.type='checkbox'; c.checked=!!cur; c.indeterminate=cur===undefined; c.onchange=()=>{ pushHist(); on(c.checked); buildLoopsUI(); refresh(); renderEdit(); }; return c; };
+  row('가공', chk(same(it=>!!it.on), v=>items.forEach(it=>it.on=v)));
+  row('그룹 (공구)', sel(TG.map(g=>[String(g.id),`T${g.id} Ø${toolOf(g.id)}`]), (v=>v===undefined?v:String(v))(same(it=>gidOf(it))), v=>items.forEach(it=>it.grp=+v)));
+  if(loops.length){
+    const sideOpts=[['out','바깥'],['in','안쪽 (엔드밀)'],['on','선 위']]; if(circ) sideOpts.push(['drill','드릴 (중심 찍기)']);
+    row('가공 위치', sel(sideOpts, sameL(L=>L.drill&&isCircle(L)?'drill':L.side), v=>loops.forEach(L=>{ if(v==='drill'){ if(isCircle(L)) L.drill=true; } else { L.drill=false; L.side=v; } })));
+    row('방향', sel([['auto','기본'],['cw','시계 (CW)'],['ccw','반시계 (CCW)']], (v=>v===undefined?v:v||'auto')(sameL(L=>L.dir||'')), v=>loops.forEach(L=>L.dir=v==='auto'?null:v)));
+    row('황삭+정삭', chk(sameL(L=>roughOf(L)), v=>loops.forEach(L=>L.rough=v)));
+    const fi=document.createElement('input'); fi.type='number'; fi.step='0.05'; fi.min='0.05'; fi.style.cssText='width:64px;font-size:12px;padding:2px 4px'; const fv=sameL(L=>L.fin??''); fi.value=fv===undefined?'':fv; fi.placeholder=fv===undefined?'여러 값':'기본 '+$('finAllow').value;
+    fi.onchange=()=>{ pushHist(); const v=parseFloat(fi.value); loops.forEach(L=>L.fin=v>0?v:null); buildLoopsUI(); refresh(); }; row('정삭 두께 mm', fi); }
+  return box; }
 function setAllCircles(v){ const b=B(); if(!b||!b.loops) return; const cs=b.loops.filter(L=>L.depth>0&&isCircle(L)); if(!cs.length){ toast('안쪽에 원이 없습니다'); return; } pushHist(); for(const L of cs) L.drill=v; buildLoopsUI(); refresh(); toast(`안쪽 원 ${cs.length}개를 ${v?'드릴(중심 찍기)':'엔드밀(안쪽 윤곽)'}로 가공합니다`); }
 $('circDrill').onclick=()=>setAllCircles(true); $('circMill').onclick=()=>setAllCircles(false);
 $('holeMode').onchange=()=>{ try{localStorage.setItem('cnc.holeMode',$('holeMode').value);}catch(e){} refresh(); }; try{ const v=localStorage.getItem('cnc.holeMode'); if(v) $('holeMode').value=v; }catch(e){}
