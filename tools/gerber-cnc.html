@@ -8683,8 +8683,9 @@ function makeJob(b,gid){ if(gid==null){ const used=usedGroups(b); if(used.length
         const a=q[bi], c=q[(bi+1)%q.length]; let pts; if(Math.hypot(bp[0]-a[0],bp[1]-a[1])<1) pts=q.slice(bi).concat(q.slice(0,bi)); else if(Math.hypot(bp[0]-c[0],bp[1]-c[1])<1){ const j=(bi+1)%q.length; pts=q.slice(j).concat(q.slice(0,j)); } else pts=[bp,...q.slice(bi+1),...q.slice(0,bi+1)]; q=pts; }
       else { const sc={ll:[1,1],lr:[-1,1],ul:[1,-1],ur:[-1,-1]}[$('startSel').value]||[1,1], f=v=>sc[0]*v[0]+sc[1]*v[1]; let si=0; for(let i=1;i<q.length;i++) if(f(q[i])<f(q[si])) si=i; q=q.slice(si).concat(q.slice(0,si)); }
       return q.map(([x,y])=>toMM(x,y)); }); };
-    const stages=rough?[{paths:mk(fin/MM),passes,kind:'rough'},{paths:mk(0),passes:finPasses,kind:'finish'}]:[{paths:mk(0),passes,kind:'one'}];
-    for(const [dx,dy] of offs) for(const st of stages) for(const q of st.paths){ const m=q.map(([x,y])=>[x+dx,y+dy]); cuts.push({loop:L,mm:m,len:perim(m),passes:st.passes,kind:st.kind,tabs:L.side==='out'||L.side==='in'?p.tabs:0}); } }
+    const dL=L.cd>0?L.cd:depth, psL=[]; if(dL===depth) psL.push(...passes); else for(let z=p.step;;z+=p.step){ if(z>=dL-1e-6){psL.push(dL);break;} psL.push(z); }
+    const stages=rough?[{paths:mk(fin/MM),passes:psL,kind:'rough'},{paths:mk(0),passes:dL===depth?finPasses:[dL],kind:'finish'}]:[{paths:mk(0),passes:psL,kind:'one'}];
+    for(const [dx,dy] of offs) for(const st of stages) for(const q of st.paths){ const m=q.map(([x,y])=>[x+dx,y+dy]); cuts.push({loop:L,mm:m,len:perim(m),passes:st.passes,kind:st.kind,depth:dL,tabs:L.side==='out'||L.side==='in'?p.tabs:0}); } }
   // inner contours of every copy first, then outer contours
   cuts.sort((a,c)=>c.loop.depth-a.loop.depth);
   return {p,o,passes,finPasses,depth,holes,cuts,offs,pitch:[pitchX,pitchY],n:[nx,ny],gid};
@@ -8718,7 +8719,7 @@ function gcodeOne(b,J,first,last){ const p=J.p, L=[]; let t=0; const out=s=>L.pu
   for(const c of J.cuts){ const q=c.mm, n=q.length; const seg=[], cum=[0]; for(let i=0;i<n;i++){const a=q[i],e=q[(i+1)%n]; seg.push(Math.hypot(e[0]-a[0],e[1]-a[1])); cum.push(cum[i]+seg[i]);} const tot=cum[n]; if(tot<1e-6) continue;
     const ptAt=s=>{s=((s%tot)+tot)%tot; let i=0; while(i<n-1&&cum[i+1]<=s) i++; const l=seg[i]||1, k=(s-cum[i])/l, a=q[i], e=q[(i+1)%n]; return [a[0]+(e[0]-a[0])*k,a[1]+(e[1]-a[1])*k];};
     const verts=(sA,sB)=>{const v=[]; for(let k=0;k<3;k++) for(let i=0;i<=n;i++){const s=cum[i]+k*tot; if(s>sA+1e-6&&s<sB-1e-6) v.push(s);} return v;};
-    const tabTop=-(J.depth-p.tabH-p.over), maxRamp=Math.max(0.5,tot*0.4);
+    const tabTop=-((c.depth||J.depth)-p.tabH-p.over), maxRamp=Math.max(0.5,tot*0.4);
     let zLevel=0, here=null;
     const PS=c.passes||J.passes; PS.forEach((z,pi)=>{ const zc=-z, last=pi===PS.length-1, dz=zc-zLevel, Lr=Math.min(maxRamp,Math.abs(dz)/RAMP), s0=tot-Lr;
       const zones=[]; if(c.tabs>0&&p.tabH>0&&zc<tabTop-1e-6){ const w=p.tabW+p.tool, span=tot-maxRamp; for(let k=0;k<c.tabs;k++){const m=span*(k+0.5)/c.tabs; zones.push([m-w/2,m+w/2]);} }
@@ -8990,7 +8991,7 @@ function circPts(cx,cy,r){const n=Math.max(24,Math.min(180,Math.ceil(2*Math.PI*r
 function shapeFrom(a,c){ if(mode==='circle'){ const r=snap(Math.hypot(c[0]-a[0],c[1]-a[1])); return {type:'circle',cx:a[0],cy:a[1],r,w:r}; }
   return {type:'rect',x:Math.min(a[0],c[0]),y:Math.min(a[1],c[1]),w:Math.abs(c[0]-a[0]),h:Math.abs(c[1]-a[1]),r:(+$('rectR').value||0)/MM}; }
 function shapePts(sh){ return sh.type==='circle'?circPts(sh.cx,sh.cy,sh.r):rectPts(sh.x,sh.y,sh.w,sh.h,sh.r); }
-function pushHist(){const b=B(); hist.push({name:b.name,loops:b.loops.map(L=>({pts:L.pts.map(q=>q.slice()),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,drill:!!L.drill,dd:L.dd,ds:L.ds,dr:L.dr,grp:L.grp,shape:L.shape?{...L.shape}:null})),holes:b.holes.map(h=>({...h})),rotA:b.rotA||0,org:b.org?b.org.slice():null}); if(hist.length>60) hist.shift();}
+function pushHist(){const b=B(); hist.push({name:b.name,loops:b.loops.map(L=>({pts:L.pts.map(q=>q.slice()),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,drill:!!L.drill,dd:L.dd,ds:L.ds,dr:L.dr,grp:L.grp,cd:L.cd,shape:L.shape?{...L.shape}:null})),holes:b.holes.map(h=>({...h})),rotA:b.rotA||0,org:b.org?b.org.slice():null}); if(hist.length>60) hist.shift();}
 function undo(){const b=B(); const h=hist.pop(); if(!h||h.name!==b.name){toast('되돌릴 작업이 없습니다');return;} b.loops=h.loops; b.holes=h.holes; const rc=(b.rotA||0)!==h.rotA; b.rotA=h.rotA; b.org=h.org; if(rc) fit(); selset.clear(); relayout(b); buildLoopsUI(); refresh(); renderEdit(); toast('되돌렸습니다');}
 function relayout(b){ for(const L of b.loops){ let x0=1e12,y0=1e12,x1=-1e12,y1=-1e12; for(const [x,y] of L.pts){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;} L.box=[x0,y0,x1,y1]; L.area=Math.abs(signedArea(L.pts)); }
   b.loops.sort((a,c)=>c.area-a.area); b.loops.forEach((L,i)=>{L.id=i+1; L.depth=b.loops.filter(o=>o!==L&&o.area>L.area&&inPoly(L.pts[0],o.pts)).length; if(!L.side) L.side=L.depth%2===0?'out':'in';});
@@ -9108,6 +9109,8 @@ function commonSettings(items){ const box=document.createElement('div'); box.cla
   const sel=(opts,cur,on)=>{ const s=document.createElement('select'); s.style.cssText='font-size:12px;padding:2px 4px'; if(cur===undefined) opts=[['','(여러 값)'],...opts]; s.innerHTML=opts.map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join(''); s.value=cur===undefined?'':cur; s.onchange=()=>{ if(s.value==='') return; pushHist(); on(s.value); buildLoopsUI(); refresh(); renderEdit(); }; return s; };
   const chk=(cur,on)=>{ const c=document.createElement('input'); c.type='checkbox'; c.checked=!!cur; c.indeterminate=cur===undefined; c.onchange=()=>{ pushHist(); on(c.checked); buildLoopsUI(); refresh(); renderEdit(); }; return c; };
   row('가공', chk(same(it=>!!it.on), v=>items.forEach(it=>it.on=v)));
+  { const dv=same(it=>it.pts&&!(it.drill&&isCircle(it))?(it.cd??''):(it.dd??'')); const di=document.createElement('input'); di.type='number'; di.step='0.1'; di.min='0'; di.style.cssText='width:64px;font-size:12px;padding:2px 4px'; di.value=dv===undefined?'':dv; di.placeholder=dv===undefined?'여러 값':'기본 '+(+$('thick').value+ +$('over').value);
+    di.onchange=()=>{ pushHist(); const v=parseFloat(di.value); const val=v>0?v:null; items.forEach(it=>{ if(it.pts) it.cd=val; it.dd=val; }); buildLoopsUI(); refresh(); renderEdit(); }; row('깊이 mm', di); }
   row('그룹 (공구)', sel(TG.map(g=>[String(g.id),`T${g.id} Ø${toolOf(g.id)}`]), (v=>v===undefined?v:String(v))(same(it=>gidOf(it))), v=>items.forEach(it=>it.grp=+v)));
   if(loops.length){
     const sideOpts=[['out','바깥'],['in','안쪽 (엔드밀)'],['on','선 위']]; if(circ) sideOpts.push(['drill','드릴 (중심 찍기)']);
@@ -9149,7 +9152,7 @@ $('zipBtn').onclick=async()=>{const b=B(); if(!b||!b._g||b.isNc) return; await s
 const SETTING_IDS=['preset',...PKEYS,'holeSrc','holeMode','tcMode','originSel','startSel','nx','ny','gx','gy','rectR'];
 function projectJSON(b){ const st={}; for(const id of SETTING_IDS) if($(id)) st[id]=$(id).value;
   return {app:'일렉트레이너 CNC CAM',version:1,name:b.name,savedAt:new Date().toISOString(),kind:b.isDxf?'drawing':'gerber',ext:b.ext,rotA:b.rotA||0,org:b.org||null,settings:st,
-    loops:b.loops.map(L=>({pts:L.pts.map(([x,y])=>[Math.round(x*10)/10,Math.round(y*10)/10]),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,drill:!!L.drill,dd:L.dd??null,ds:L.ds??null,dr:L.dr??null,grp:L.grp||1,shape:L.shape||null})),
+    loops:b.loops.map(L=>({pts:L.pts.map(([x,y])=>[Math.round(x*10)/10,Math.round(y*10)/10]),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,drill:!!L.drill,dd:L.dd??null,ds:L.ds??null,dr:L.dr??null,grp:L.grp||1,cd:L.cd??null,shape:L.shape||null})),
     holes:b.holes.map(h=>({x:h.x,y:h.y,ref:h.ref,on:h.on,user:!!h.user,d:h.d,dd:h.dd??null,ds:h.ds??null,dr:h.dr??null,grp:h.grp||1})),groups:TG}; }
 $('projBtn').onclick=async()=>{const b=B(); if(!b||!b.loops||b.isNc){toast('저장할 작업이 없습니다'); return;} const zip=new JSZip();
   zip.file('cncproject.json',JSON.stringify(projectJSON(b))); for(const [fn,bytes] of Object.entries(b.files||{})) zip.file('src/'+fn,bytes);
@@ -9159,7 +9162,7 @@ async function loadCamProject(zip,fallbackName){ const P=JSON.parse(await zip.fi
   let name=P.name||fallbackName; while(boards[name]) name+=' (2)';
   let b; if(P.kind==='gerber'&&Object.keys(files).length){ b=buildBoard(name,files); } else { b={name,files:{},layers:{},srcNames:{},ext:P.ext,isDxf:true,dxfHoles:[]}; }
   b.ext=P.ext||b.ext; b.comps=[]; b.fromProject=true; b.rotA=P.rotA||0; b.org=P.org||null;
-  b.loops=P.loops.map(L=>({pts:L.pts,on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,drill:!!L.drill,dd:L.dd??undefined,ds:L.ds??undefined,dr:L.dr??undefined,grp:L.grp||1,shape:L.shape||undefined})); relayout(b);
+  b.loops=P.loops.map(L=>({pts:L.pts,on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,drill:!!L.drill,dd:L.dd??undefined,ds:L.ds??undefined,dr:L.dr??undefined,grp:L.grp||1,cd:L.cd??undefined,shape:L.shape||undefined})); relayout(b);
   b.holes=P.holes.map(h=>({...h,keep:true,key:Math.round(h.x)+','+Math.round(h.y)})); if(Array.isArray(P.groups)&&P.groups.length&&P.groups[0].id===1){ TG=P.groups; saveTG(); }
   for(const [id,v] of Object.entries(P.settings||{})) if($(id)) $(id).value=v;
   boards[name]=b; return name; }
