@@ -8649,11 +8649,13 @@ function rotateAll(step){const b=B(); if(!b) return; if(b.isNc){toast('불러온
   relayout(b); jobCache=null; refresh(); fit(); renderEdit(); toast(`도면 전체를 ${a===90?'반시계 90°':'시계 90°'} 돌렸습니다`);}
 // origin reference outline: the largest outline being cut; when no outline is cut (holes / drilled circles only),
 // the smallest outline around those holes, so the origin stays where it was set
-function refLoop(b){ if(!b.loops||!b.loops.length) return null; const cut=b.loops.find(l=>l.on&&!(l.drill&&isCircle(l))); if(cut) return cut;
-  const pts=[...(b.holes||[]).filter(h=>h.on).map(h=>[h.x,h.y]),...b.loops.filter(l=>l.on&&l.drill).map(l=>circleOf(l).slice(0,2))];
-  const own=new Set(b.loops.filter(l=>l.on&&l.drill));
-  const enc=b.loops.filter(l=>!own.has(l)&&pts.length&&pts.every(q=>inPoly(q,l.pts))); if(enc.length) return enc.reduce((a,c)=>c.area<a.area?c:a);
-  return b.loops.find(l=>!own.has(l))||null; }
+// origin reference: the drawing's outline around everything being machined, whether that outline is cut or not
+// (DWG: the part outline picked on load; otherwise the largest outline that holds every machined item)
+function refLoop(b){ if(!b.loops||!b.loops.length) return null; if(b.dwgPick&&b.loops.includes(b.dwgPick)) return b.dwgPick;
+  const onL=b.loops.filter(l=>l.on), pts=[...(b.holes||[]).filter(h=>h.on).map(h=>[h.x,h.y]),...onL.map(l=>l.drill&&isCircle(l)?circleOf(l).slice(0,2):l.pts[0])];
+  const ok=b.loops.filter(L=>onL.every(l=>l===L||inPoly(l.drill&&isCircle(l)?circleOf(l).slice(0,2):l.pts[0],L.pts)||(l.area<L.area&&inPoly(l.pts[0],L.pts)))&&(b.holes||[]).filter(h=>h.on).every(h=>inPoly([h.x,h.y],L.pts)));
+  if(ok.length) return ok.reduce((a,c)=>c.area>a.area?c:a);
+  return b.loops[0]; }
 function origin(b){ if(b.isNc) return [0,0]; const L=refLoop(b); const box=L?L.box:viewExt(b);
   const m=$('originSel').value; if(m==='pick'&&b.org) return b.org; if(m==='c') return [(box[0]+box[2])/2,(box[1]+box[3])/2]; return [box[0],box[1]]; }
 const f3=v=>(Math.round(v*1000)/1000).toFixed(3);
