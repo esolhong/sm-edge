@@ -7693,6 +7693,7 @@ h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute
 .item{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-items:center;padding:3px 4px;border-radius:4px;font-size:12.5px}
 .item .sub{grid-column:2/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-1px 0 3px}
 .item .sub[hidden]{display:none}
+.drillset[hidden]{display:none!important}
 .item .sub select{font-size:12px;padding:2px 4px}
 .item .chk[hidden]{display:none}
 .item .chk{display:flex;gap:4px;align-items:center;font-size:12px;color:var(--muted)}
@@ -8641,7 +8642,7 @@ function makeJob(b){ const p=P(), o=origin(b), toMM=(x,y)=>[(x-o[0])*MM,(y-o[1])
   const sel=b.loops.filter(l=>l.on&&!l.drill); const bb=sel.length?sel.reduce((a,l)=>[Math.min(a[0],l.box[0]),Math.min(a[1],l.box[1]),Math.max(a[2],l.box[2]),Math.max(a[3],l.box[3])],[1e12,1e12,-1e12,-1e12]):viewExt(b);
   const pitchX=(bb[2]-bb[0])*MM+(+$('gx').value||0), pitchY=(bb[3]-bb[1])*MM+(+$('gy').value||0);
   const offs=[]; for(let j=0;j<ny;j++) for(let i=0;i<nx;i++) offs.push([i*pitchX,j*pitchY]);
-  const drills=b.loops.filter(l=>l.on&&l.drill&&isCircle(l)).map(L=>{const [x,y,d]=circleOf(L); return {x,y,d,ref:'C'+L.id,drill:true};});
+  const drills=b.loops.filter(l=>l.on&&l.drill&&isCircle(l)).map(L=>{const [x,y,d]=circleOf(L); return {x,y,d,ref:'C'+L.id,drill:true,dd:L.dd,ds:L.ds,dr:L.dr};});
   const holesAll=[]; for(const [dx,dy] of offs) for(const h of [...b.holes.filter(h=>h.on),...drills]) holesAll.push({...h,x:h.x+dx/MM,y:h.y+dy/MM});
   const holes=nnOrder(holesAll,[o[0],o[1]]).map(h=>({...h,mm:toMM(h.x,h.y)}));
   const cuts=[];
@@ -8676,9 +8677,9 @@ function gcode(b){ const J=makeJob(b), p=J.p, L=[]; let t=0; const out=s=>L.push
     if(hR<=0.02){ out(`G00 ${XY(cx,cy)} Z${safe} `); out(`G00 ${XY(cx,cy)} Z3.000 `); out(`G01 ${XY(cx,cy)} Z0.000 F${p.plunge} `);
       // peck drilling: the depth split into equal pecks, retracting to the set height between pecks (2T: 2 × 1.25 mm, back to Z2)
       // peck: advance drillStep, retract to Z drillRet, rapid back to just above the last depth, repeat to the drill depth
-      const D=p.drillDepth>0?p.drillDepth:J.depth, zs=[]; for(let z=p.drillStep;;z+=p.drillStep){ if(z>=D-1e-6){zs.push(D);break;} zs.push(z); }
-      zs.forEach((z,k)=>{ if(k>0) out(`G00 ${XY(cx,cy)} Z${f3(-zs[k-1]+0.2)} `); out(`G01 ${XY(cx,cy)} Z${f3(-z)} F${p.plunge} `); if(k<zs.length-1) out(`G00 ${XY(cx,cy)} Z${f3(p.drillRet)} `); });
-      out(`G00 ${XY(cx,cy)} Z${safe} `); t+=(D+zs.length*(p.drillRet+0.2))*2/p.plunge+0.02; continue; }
+      const dd=h.dd>0?h.dd:p.drillDepth, ds=h.ds>0?h.ds:p.drillStep, dr=h.dr!=null&&h.dr!==''&&h.dr>=0?+h.dr:p.drillRet; const D=dd>0?dd:J.depth, zs=[]; for(let z=ds;;z+=ds){ if(z>=D-1e-6){zs.push(D);break;} zs.push(z); }
+      zs.forEach((z,k)=>{ if(k>0) out(`G00 ${XY(cx,cy)} Z${f3(-zs[k-1]+0.2)} `); out(`G01 ${XY(cx,cy)} Z${f3(-z)} F${p.plunge} `); if(k<zs.length-1) out(`G00 ${XY(cx,cy)} Z${f3(dr)} `); });
+      out(`G00 ${XY(cx,cy)} Z${safe} `); t+=(D+zs.length*(dr+0.2))*2/p.plunge+0.02; continue; }
     // helix down at most 1 mm per turn, then one full turn at depth, in 180° R-arcs
     const pitch=Math.min(p.step,1), turns=Math.max(1,Math.ceil(J.depth/pitch)), A=[cx+hR,cy], Bp=[cx-hR,cy];
     out(`G00 ${XY(...A)} Z${safe} `); out(`G00 ${XY(...A)} Z3.000 `); out(`G01 ${XY(...A)} Z0.000 F${p.plunge} `);
@@ -8958,7 +8959,7 @@ function circPts(cx,cy,r){const n=Math.max(24,Math.min(180,Math.ceil(2*Math.PI*r
 function shapeFrom(a,c){ if(mode==='circle'){ const r=snap(Math.hypot(c[0]-a[0],c[1]-a[1])); return {type:'circle',cx:a[0],cy:a[1],r,w:r}; }
   return {type:'rect',x:Math.min(a[0],c[0]),y:Math.min(a[1],c[1]),w:Math.abs(c[0]-a[0]),h:Math.abs(c[1]-a[1]),r:(+$('rectR').value||0)/MM}; }
 function shapePts(sh){ return sh.type==='circle'?circPts(sh.cx,sh.cy,sh.r):rectPts(sh.x,sh.y,sh.w,sh.h,sh.r); }
-function pushHist(){const b=B(); hist.push({name:b.name,loops:b.loops.map(L=>({pts:L.pts.map(q=>q.slice()),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,drill:!!L.drill,shape:L.shape?{...L.shape}:null})),holes:b.holes.map(h=>({...h})),rotA:b.rotA||0,org:b.org?b.org.slice():null}); if(hist.length>60) hist.shift();}
+function pushHist(){const b=B(); hist.push({name:b.name,loops:b.loops.map(L=>({pts:L.pts.map(q=>q.slice()),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,drill:!!L.drill,dd:L.dd,ds:L.ds,dr:L.dr,shape:L.shape?{...L.shape}:null})),holes:b.holes.map(h=>({...h})),rotA:b.rotA||0,org:b.org?b.org.slice():null}); if(hist.length>60) hist.shift();}
 function undo(){const b=B(); const h=hist.pop(); if(!h||h.name!==b.name){toast('되돌릴 작업이 없습니다');return;} b.loops=h.loops; b.holes=h.holes; const rc=(b.rotA||0)!==h.rotA; b.rotA=h.rotA; b.org=h.org; if(rc) fit(); selset.clear(); relayout(b); buildLoopsUI(); refresh(); renderEdit(); toast('되돌렸습니다');}
 function relayout(b){ for(const L of b.loops){ let x0=1e12,y0=1e12,x1=-1e12,y1=-1e12; for(const [x,y] of L.pts){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;} L.box=[x0,y0,x1,y1]; L.area=Math.abs(signedArea(L.pts)); }
   b.loops.sort((a,c)=>c.area-a.area); b.loops.forEach((L,i)=>{L.id=i+1; L.depth=b.loops.filter(o=>o!==L&&o.area>L.area&&inPoly(L.pts[0],o.pts)).length; if(!L.side) L.side=L.depth%2===0?'out':'in';});
@@ -8983,9 +8984,10 @@ function renderEdit(){const el=$('editBox'), b=B(); if(!b){el.innerHTML='';retur
   if(items.length) h+=`<div class="row" style="margin-top:6px"><button id="eDel">삭제</button><span class="note">숫자를 바꾸면 바로 움직입니다</span></div>`;
   el.innerHTML=h; if(!items.length) return;
   $('eDel').onclick=delSel;
+  const drs=items.filter(it=>!it.pts||(it.drill&&isCircle(it))); if(drs.length){ const hd=document.createElement('div'); hd.style.marginTop='6px'; const tl=document.createElement('div'); tl.className='note'; tl.textContent=`드릴 설정 (선택 ${drs.length}개, 비우면 기본값)`; hd.append(tl,drillInputs(drs,()=>buildLoopsUI())); el.appendChild(hd); }
   if(circs.length){ const setD=v=>{ pushHist(); for(const L of circs){ L.drill=v; if(!v&&L.side==='drill') L.side='in'; } buildLoopsUI(); refresh(); toast(`원 ${circs.length}개를 ${v?'드릴(중심 찍기)':'엔드밀(안쪽 윤곽)'}로 가공합니다`); }; $('eDrill').onclick=()=>setD(true); $('eMill').onclick=()=>setD(false); }
   // live: every keystroke / spinner step moves the item; one undo step per edit session (focus → blur)
-  let pushed=false, tmr=null; el.querySelectorAll('input').forEach(inp=>{ inp.addEventListener('focus',()=>{pushed=false;}); inp.addEventListener('input',()=>{ if(inp.value===''||isNaN(+inp.value)) return; if(!pushed){pushHist(); pushed=true;} apply(); clearTimeout(tmr); tmr=setTimeout(()=>refresh(),120); }); });
+  let pushed=false, tmr=null; el.querySelectorAll('input:not(.drillset input)').forEach(inp=>{ inp.addEventListener('focus',()=>{pushed=false;}); inp.addEventListener('input',()=>{ if(inp.value===''||isNaN(+inp.value)) return; if(!pushed){pushHist(); pushed=true;} apply(); clearTimeout(tmr); tmr=setTimeout(()=>refresh(),120); }); });
   const apply=()=>{ const v=id=>{const i=$(id); return i?(+i.value)/MM:null;};
     if(items.length===1&&!items[0].pts){ const it=items[0]; it.x=o[0]+v('eX'); it.y=o[1]+v('eY'); it.key=Math.round(it.x)+','+Math.round(it.y); }
     else if(items.length===1&&items[0].shape){ const L=items[0], sh=L.shape; if(sh.type==='rect'){ sh.x=o[0]+v('eX'); sh.y=o[1]+v('eY'); sh.w=Math.max(G,v('eW')); sh.h=Math.max(G,v('eH')); sh.r=Math.max(0,v('eR')); } else { sh.cx=o[0]+v('eX'); sh.cy=o[1]+v('eY'); sh.r=Math.max(G,v('eD')/2); } L.pts=shapePts(sh); }
@@ -9009,10 +9011,10 @@ function buildLoopsUI(){const b=B(), el=$('loops'); el.innerHTML=''; if(!b.loops
     row.innerHTML=`<input type="checkbox" id="lp${L.id}" ${L.on?'checked':''}><label for="lp${L.id}">${isCircle(L)?'원':'윤곽'} ${L.id} <span class="m">${isCircle(L)?'Ø'+circleOf(L)[2].toFixed(2):((x1-x0)*MM).toFixed(1)+'×'+((y1-y0)*MM).toFixed(1)}</span></label><select aria-label="가공 위치"><option value="out">바깥</option><option value="in">안쪽 (엔드밀)</option><option value="on">선 위</option>${isCircle(L)?'<option value="drill">드릴 (중심 찍기)</option>':''}</select>`;
     const sub=document.createElement('div'); sub.className='sub';
     sub.innerHTML=`<select aria-label="절삭 방향"><option value="">방향: 기본</option><option value="cw">시계 방향 (CW)</option><option value="ccw">반시계 (CCW)</option></select><label class="chk"><input type="checkbox"> 황삭+정삭</label><label class="chk fin">정삭 두께 <input type="number" step="0.05" min="0.05" style="width:58px;font-size:12px;padding:2px 4px"> mm</label>`;
-    const ds=sub.querySelector('select'), rc=sub.querySelector('input'), fi=sub.querySelector('.fin input'), fl=sub.querySelector('.fin');
-    const syncSub=()=>{ const autoCW=(L.side==='in')===($('dir').value!=='climb'); ds.options[0].textContent=`방향: 기본 (${L.side==='on'?'-':autoCW?'시계':'반시계'})`; ds.value=L.dir||''; rc.checked=roughOf(L); rc.disabled=L.side==='on'; fl.hidden=!roughOf(L); fi.value=L.fin!=null?L.fin:(+$('finAllow').value||0.2); sub.hidden=!L.on||!!L.drill; };
+    const dbox=drillInputs([L]); const ds=sub.querySelector('select'), rc=sub.querySelector('input'), fi=sub.querySelector('.fin input'), fl=sub.querySelector('.fin');
+    const syncSub=()=>{ const autoCW=(L.side==='in')===($('dir').value!=='climb'); ds.options[0].textContent=`방향: 기본 (${L.side==='on'?'-':autoCW?'시계':'반시계'})`; ds.value=L.dir||''; rc.checked=roughOf(L); rc.disabled=L.side==='on'; fl.hidden=!roughOf(L); fi.value=L.fin!=null?L.fin:(+$('finAllow').value||0.2); sub.hidden=!L.on||!!L.drill; dbox.hidden=!(L.on&&L.drill&&isCircle(L)); };
     ds.onchange=()=>{ L.dir=ds.value||null; refresh(); }; rc.onchange=()=>{ L.rough=rc.checked; syncSub(); refresh(); }; fi.onchange=()=>{ const v=parseFloat(fi.value); L.fin=v>0?v:null; refresh(); };
-    row.querySelector('input').onchange=e=>{L.on=e.target.checked; syncSub(); refresh();}; const s=row.querySelector('select'); s.value=L.drill&&isCircle(L)?'drill':L.side; s.onchange=()=>{ if(s.value==='drill'){ L.drill=true; } else { L.drill=false; L.side=s.value; } syncSub(); refresh(); }; syncSub(); row.appendChild(sub); el.appendChild(row);} }
+    row.querySelector('input').onchange=e=>{L.on=e.target.checked; syncSub(); refresh();}; const s=row.querySelector('select'); s.value=L.drill&&isCircle(L)?'drill':L.side; s.onchange=()=>{ if(s.value==='drill'){ L.drill=true; } else { L.drill=false; L.side=s.value; } syncSub(); refresh(); }; syncSub(); row.appendChild(sub); row.appendChild(dbox); el.appendChild(row);} }
 function refresh(){const b=B(); if(!b) return;
   if(b.isNc){ jobCache=null; b._g={text:b.ncText}; const S=parseSim(b.ncText); let zmin=0; for(const g of S.segs) zmin=Math.min(zmin,g.z1);
     $('stats').innerHTML=`<span>파일</span><span>불러온 G-code (보기 전용)</span><span>가공 범위</span><span>${((b.ext[2]-b.ext[0])*MM).toFixed(1)} × ${((b.ext[3]-b.ext[1])*MM).toFixed(1)} mm</span><span>최대 깊이</span><span>${(-zmin).toFixed(2)} mm</span><span>예상 시간</span><span>약 ${Math.ceil(S.total)}분</span><span>G-code</span><span>${b.ncText.split(/\r?\n/).length}줄</span>`;
@@ -9048,6 +9050,13 @@ for(const id of ['nx','ny','gx','gy']) $(id).addEventListener('change',()=>{refr
 $('dir').addEventListener('change',()=>buildLoopsUI()); $('finAllow').addEventListener('change',()=>buildLoopsUI());
 for(const id of ['tool','thick','over','step','feed','plunge','rpm','dwell','safe','dir','nTabs','tabW','tabH','holeD','finAllow','drillDepth','drillStep','drillRet']) $(id).addEventListener('change',()=>{ savePreset(); refresh(); });
 $('holeSrc').onchange=()=>{const b=B(); computeHoles(b); refresh();};
+function drillInputs(items,onChange){ const box=document.createElement('div'); box.className='drillset'; box.style.cssText='grid-column:2/-1;display:grid;grid-template-columns:auto 64px auto;justify-content:start;gap:3px 6px;align-items:center;font-size:12px;margin-top:4px';
+  const F=[['dd','깊이','drillDepth'],['ds','1회 전진','drillStep'],['dr','후진 Z','drillRet']];
+  for(const [k,lab,def] of F){ const l=document.createElement('span'); l.className='note'; l.textContent=lab; const i=document.createElement('input'); i.type='number'; i.step='0.5'; i.min='0'; i.style.cssText='width:64px;font-size:12px;padding:2px 4px';
+    const vals=[...new Set(items.map(it=>it[k]==null||it[k]===''?'':String(it[k])))]; i.value=vals.length===1?vals[0]:''; i.placeholder=vals.length>1?'여러 값':'기본 '+($(def).value||(def==='drillDepth'?'0':'')); if(def==='drillDepth'&&!(+$(def).value)) i.placeholder=vals.length>1?'여러 값':'관통';
+    i.onchange=()=>{ pushHist(); const v=i.value===''?null:Math.max(0,+i.value); for(const it of items) it[k]=v; onChange&&onChange(); refresh(); };
+    const u=document.createElement('span'); u.className='note'; u.textContent='mm'; box.append(l,i,u); }
+  return box; }
 function setAllCircles(v){ const b=B(); if(!b||!b.loops) return; const cs=b.loops.filter(L=>L.depth>0&&isCircle(L)); if(!cs.length){ toast('안쪽에 원이 없습니다'); return; } pushHist(); for(const L of cs) L.drill=v; buildLoopsUI(); refresh(); toast(`안쪽 원 ${cs.length}개를 ${v?'드릴(중심 찍기)':'엔드밀(안쪽 윤곽)'}로 가공합니다`); }
 $('circDrill').onclick=()=>setAllCircles(true); $('circMill').onclick=()=>setAllCircles(false);
 $('holeMode').onchange=()=>{ try{localStorage.setItem('cnc.holeMode',$('holeMode').value);}catch(e){} refresh(); }; try{ const v=localStorage.getItem('cnc.holeMode'); if(v) $('holeMode').value=v; }catch(e){}
@@ -9076,8 +9085,8 @@ $('zipBtn').onclick=async()=>{const b=B(); if(!b||!b._g||b.isNc) return; await s
 const SETTING_IDS=['preset',...PKEYS,'holeSrc','holeMode','originSel','startSel','nx','ny','gx','gy','rectR'];
 function projectJSON(b){ const st={}; for(const id of SETTING_IDS) if($(id)) st[id]=$(id).value;
   return {app:'일렉트레이너 CNC CAM',version:1,name:b.name,savedAt:new Date().toISOString(),kind:b.isDxf?'drawing':'gerber',ext:b.ext,rotA:b.rotA||0,org:b.org||null,settings:st,
-    loops:b.loops.map(L=>({pts:L.pts.map(([x,y])=>[Math.round(x*10)/10,Math.round(y*10)/10]),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,drill:!!L.drill,shape:L.shape||null})),
-    holes:b.holes.map(h=>({x:h.x,y:h.y,ref:h.ref,on:h.on,user:!!h.user,d:h.d}))}; }
+    loops:b.loops.map(L=>({pts:L.pts.map(([x,y])=>[Math.round(x*10)/10,Math.round(y*10)/10]),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,drill:!!L.drill,dd:L.dd??null,ds:L.ds??null,dr:L.dr??null,shape:L.shape||null})),
+    holes:b.holes.map(h=>({x:h.x,y:h.y,ref:h.ref,on:h.on,user:!!h.user,d:h.d,dd:h.dd??null,ds:h.ds??null,dr:h.dr??null}))}; }
 $('projBtn').onclick=async()=>{const b=B(); if(!b||!b.loops||b.isNc){toast('저장할 작업이 없습니다'); return;} const zip=new JSZip();
   zip.file('cncproject.json',JSON.stringify(projectJSON(b))); for(const [fn,bytes] of Object.entries(b.files||{})) zip.file('src/'+fn,bytes);
   saveFile(b.name.replace(/[\\/:*?"<>|]/g,'_')+'_CAM프로젝트.zip',await zip.generateAsync({type:'blob',compression:'DEFLATE'}));};
@@ -9086,7 +9095,7 @@ async function loadCamProject(zip,fallbackName){ const P=JSON.parse(await zip.fi
   let name=P.name||fallbackName; while(boards[name]) name+=' (2)';
   let b; if(P.kind==='gerber'&&Object.keys(files).length){ b=buildBoard(name,files); } else { b={name,files:{},layers:{},srcNames:{},ext:P.ext,isDxf:true,dxfHoles:[]}; }
   b.ext=P.ext||b.ext; b.comps=[]; b.fromProject=true; b.rotA=P.rotA||0; b.org=P.org||null;
-  b.loops=P.loops.map(L=>({pts:L.pts,on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,drill:!!L.drill,shape:L.shape||undefined})); relayout(b);
+  b.loops=P.loops.map(L=>({pts:L.pts,on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,drill:!!L.drill,dd:L.dd??undefined,ds:L.ds??undefined,dr:L.dr??undefined,shape:L.shape||undefined})); relayout(b);
   b.holes=P.holes.map(h=>({...h,keep:true,key:Math.round(h.x)+','+Math.round(h.y)}));
   for(const [id,v] of Object.entries(P.settings||{})) if($(id)) $(id).value=v;
   boards[name]=b; return name; }
