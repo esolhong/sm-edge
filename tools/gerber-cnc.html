@@ -7694,6 +7694,7 @@ h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute
 .item .sub{grid-column:2/-1;display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:-1px 0 3px}
 .item .sub[hidden]{display:none}
 .drillset[hidden]{display:none!important}
+.gtpl{width:100%;box-sizing:border-box;font-family:var(--f-mono);font-size:12px;margin:2px 0 6px;resize:vertical;background:inherit;color:inherit;border:1px solid var(--line,#3d4236);border-radius:4px;padding:4px}
 .grow{display:grid;grid-template-columns:14px 24px 1fr auto auto;gap:6px;align-items:center;font-size:12.5px;padding:2px 0}
 .grow>span:nth-child(3){white-space:nowrap}
 .grow .dot{width:12px;height:12px;border-radius:50%}
@@ -7842,6 +7843,12 @@ pre.gc .cur .n{color:inherit}
         <label for="tabH">브리지 높이</label><span><input type="number" id="tabH" value="1" step="0.1"><span class="u">mm</span></span>
       </div>
       <p class="note" style="margin-top:6px">외곽은 공구 반지름만큼 바깥으로 보정해서 완성품이 PCB 크기와 같게 나옵니다. 홀이 엔드밀보다 크면 헬리컬(원호 보간), 같으면 제자리에서 찍어 가공합니다. 홀 먼저, 외곽은 마지막에 깎습니다.</p></section>
+    <section><h2>시작·끝 코드</h2>
+      <p class="note">G-code 맨 앞, 공구 교환, 맨 끝에 들어가는 줄입니다. {T}=공구 번호(지름×10), {S}=스핀들, {P}=스핀들 대기(초, 0이면 그 줄 생략), {SAFE}=안전 높이.</p>
+      <label class="note" for="startCode">시작 코드</label><textarea id="startCode" class="gtpl" rows="5" spellcheck="false"></textarea>
+      <label class="note" for="tcCode">공구 교환 코드 (그룹이 2개 이상일 때)</label><textarea id="tcCode" class="gtpl" rows="6" spellcheck="false"></textarea>
+      <label class="note" for="endCode">끝 코드</label><textarea id="endCode" class="gtpl" rows="3" spellcheck="false"></textarea>
+      <div class="row" style="margin-top:4px"><button id="tplReset">기본값으로</button></div></section>
     <section><h2>작업 요약</h2><div class="stats" id="stats"></div></section>
     <section><h2>G-code 미리보기</h2><pre class="gc" id="gc"></pre></section>
   </aside>
@@ -8693,10 +8700,14 @@ function makeJob(b,gid){ if(gid==null){ const used=usedGroups(b); if(used.length
 // Output follows the shop's existing Mach3 programs (ucamcam output, 2026-11-02): same start/end block, G00/G01 with
 // three decimals on every axis, R-format arcs (no IJ-mode dependency), Z3 approach, 20° ramp entry on contours, helical holes.
 const RAPIDF=6000, RAMP=Math.tan(20*Math.PI/180);
+const TPL_DEF={startCode:'G90G17G21\nS10000 M3\nM06 T{T}\nS{S}\nG04 P{P}',tcCode:'M05\nM06 T{T}\nM00\nS10000 M3\nS{S}\nG04 P{P}',endCode:'G00 Z100.000\nG00 Y200.000\nM30'};
+function tplLines(id,p){ const v=($(id)&&$(id).value.trim()!=='')?$(id).value:TPL_DEF[id]; const M={T:String(Math.round(p.tool*10)),S:String(p.rpm),P:String(p.dwell),SAFE:f3(p.safe)};
+  return v.split(/\r?\n/).map(s=>s.trim()).filter(s=>s&&!(/\{P\}/.test(s)&&!(p.dwell>0))).map(s=>s.replace(/\{(T|S|P|SAFE)\}/g,(m,k)=>M[k])); }
+setTimeout(()=>{ for(const id of Object.keys(TPL_DEF)){ let v=null; try{ v=localStorage.getItem('cnc.'+id); }catch(e){} $(id).value=v??TPL_DEF[id]; $(id).addEventListener('change',()=>{ try{localStorage.setItem('cnc.'+id,$(id).value);}catch(e){} refresh(); }); }
+$('tplReset').onclick=()=>{ for(const id of Object.keys(TPL_DEF)){ $(id).value=TPL_DEF[id]; try{localStorage.removeItem('cnc.'+id);}catch(e){} } refresh(); toast('시작·끝 코드를 기본값으로 돌렸습니다'); }; refresh(); },0);
 function gcodeOne(b,J,first,last){ const p=J.p, L=[]; let t=0; const out=s=>L.push(s);
   const holeR=(p.holeD-p.tool)/2, fx=v=>f3(v===0?0:v), XY=(x,y)=>`X${fx(x)} Y${fx(y)}`, safe=f3(p.safe);
-  if(first){ out('G90G17G21'); out('S10000 M3'); out(`M06 T${Math.round(p.tool*10)}`); out(`S${p.rpm} `); if(p.dwell>0) out(`G04 P${p.dwell}`); } // spindle run-up wait (Mach3 default: P in seconds)
-  else { out('M05'); out(`M06 T${Math.round(p.tool*10)}`); out('M00'); out('S10000 M3'); out(`S${p.rpm} `); if(p.dwell>0) out(`G04 P${p.dwell}`); } // tool change: spindle off, change, wait for Cycle Start
+  for(const s of tplLines(first?'startCode':'tcCode',p)) out(s); // start block / tool change block, editable in "시작·끝 코드" (G04 P = spindle run-up wait, seconds)
   out(`G00 X0.000 Y0.000 Z${safe} F${RAPIDF} `);
   if(first) out(`(ELECTRAINER CNC CAM ${asciiName(b.name)} TOOL ${p.tool} STOCK ${p.thick} DEPTH ${f3(J.depth)} HOLES ${J.holes.length}xD${p.holeD} ORIGIN ${asciiOrigin()})`);
   // holes
@@ -8737,7 +8748,7 @@ function gcodeOne(b,J,first,last){ const p=J.p, L=[]; let t=0; const out=s=>L.pu
       if(Math.abs(zNow-zc)>1e-6) out(`G01 ${XY(...ptAt(end))} Z${f3(zc)} F${p.plunge} `);
       t+=Lr/p.plunge+end/p.feed; zLevel=zc; here=ptAt(end); });
     out(`G00 ${XY(...here)} Z${safe} F${RAPIDF} `); }
-  if(last) out('M30'); t+=p.dwell/60;
+  if(last) for(const s of tplLines('endCode',p)) out(s); t+=p.dwell/60;
   return {text:L.join('\r\n')+'\r\n', minutes:t, job:J, lines:L};
 }
 function gcode(b){ const J=makeJob(b); if(!J.groups){ const g=gcodeOne(b,J,true,true); g.parts=[{gid:J.gid,tool:J.p.tool,text:g.text}]; return g; }
@@ -9149,7 +9160,7 @@ $('saveBtn').onclick=async()=>{const b=B(); if(!b||!b._g) return; if(b.isNc){toa
   saveFile(base+'.nc',new Blob([b._g.text],{type:'text/plain'})); };
 $('zipBtn').onclick=async()=>{const b=B(); if(!b||!b._g||b.isNc) return; await saveZip(b,b.name.replace(/[\\/:*?"<>|]/g,'_')+'_'+$('thick').value+'T');};
 /* ---------- CAM project: edits + settings + source, separate from the NC output ---------- */
-const SETTING_IDS=['preset',...PKEYS,'holeSrc','holeMode','tcMode','originSel','startSel','nx','ny','gx','gy','rectR'];
+const SETTING_IDS=['preset',...PKEYS,'holeSrc','holeMode','tcMode','startCode','tcCode','endCode','originSel','startSel','nx','ny','gx','gy','rectR'];
 function projectJSON(b){ const st={}; for(const id of SETTING_IDS) if($(id)) st[id]=$(id).value;
   return {app:'일렉트레이너 CNC CAM',version:1,name:b.name,savedAt:new Date().toISOString(),kind:b.isDxf?'drawing':'gerber',ext:b.ext,rotA:b.rotA||0,org:b.org||null,settings:st,
     loops:b.loops.map(L=>({pts:L.pts.map(([x,y])=>[Math.round(x*10)/10,Math.round(y*10)/10]),on:L.on,side:L.side,dir:L.dir||null,rough:L.rough,start:L.start?L.start.slice():null,fin:L.fin??null,drill:!!L.drill,dd:L.dd??null,ds:L.ds??null,dr:L.dr??null,grp:L.grp||1,cd:L.cd??null,shape:L.shape||null})),
