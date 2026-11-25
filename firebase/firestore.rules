@@ -28,7 +28,9 @@ service cloud.firestore {
         && profileOk(request.resource.data)
         && request.resource.data.email == request.auth.token.email
         && validExpire(request.resource.data.expireAt)
-        && request.resource.data.keys().hasOnly(['name','phone','company','title','email','consentAt','consentVersion','createdAt','expireAt']);
+        && (!('ipc' in request.resource.data) || (request.resource.data.ipc is list && request.resource.data.ipc.size() <= 6))
+        && (!('ipcNotify' in request.resource.data) || request.resource.data.ipcNotify is bool)
+        && request.resource.data.keys().hasOnly(['name','phone','company','title','email','consentAt','consentVersion','createdAt','expireAt','ipc','ipcNotify','ipcNotifyAt']);
       allow delete: if isAdmin() || (signedIn() && request.auth.uid == uid);
     }
 

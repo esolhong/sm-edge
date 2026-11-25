@@ -59,6 +59,7 @@
         <div class="row"><label>회사명 <span class="req">*</span></label><input type="text" name="company" required maxlength="80" autocomplete="organization"></div>
         <div class="row"><label>부서·직함</label><input type="text" name="title" maxlength="60"></div>
       </div>
+      <p style="color:var(--muted);font-size:14px;margin:-4px 0 16px">IPC 교육 수료자는 가입 후 <strong style="color:var(--fg)">내 정보</strong>에서 IPC 자격(최대 6개)을 등록하면 갱신 안내를 받을 수 있습니다.</p>
       <div class="row"><label>이메일 (로그인 아이디) <span class="req">*</span></label><input type="email" name="email" required autocomplete="email"></div>
       <div class="cols">
         <div class="row"><label>비밀번호 (6자 이상) <span class="req">*</span></label><input type="password" name="password" required minlength="6" autocomplete="new-password"></div>
@@ -98,6 +99,24 @@
         <div class="row"><label>부서·직함</label><input type="text" name="title" maxlength="60"></div>
       </div>
           <div class="btns"><button class="btn primary" type="submit">정보 수정</button><button class="btn ghost" type="button" id="btn-logout">로그아웃</button><button class="btn ghost" type="button" id="btn-withdraw" style="margin-left:auto">회원 탈퇴</button></div>
+        </form>
+
+        <form id="f-ipc" class="card" style="margin-top:36px">
+          <h3>IPC 자격 등록 <span class="badge muted">선택</span></h3>
+          <p style="margin-bottom:16px">IPC 교육을 수료하신 분은 자격을 등록해 두시면 만료(2년) 전에 갱신 교육을 안내해 드립니다. 최대 6개까지 등록할 수 있습니다.</p>
+          <div id="ipc-rows"></div>
+          <div class="btns" style="margin:4px 0 18px"><button class="btn ghost small" type="button" id="btn-ipc-add">+ 자격 추가</button></div>
+          <div class="consent">
+            <strong style="color:var(--fg)">IPC 자격 정보 수집·이용 및 갱신 안내 수신 동의 (선택)</strong>
+            <table>
+              <tr><th>수집 항목</th><td>IPC 자격 종류, 등급, 자격번호, 취득일, 만료일</td></tr>
+              <tr><th>이용 목적</th><td>자격 만료 전 갱신 안내, IPC 교육 일정 안내 (이메일·문자)</td></tr>
+              <tr><th>보유 기간</th><td>회원 정보 보유기간과 같음. 동의를 철회하거나 자격을 지우면 즉시 삭제합니다.</td></tr>
+            </table>
+            동의하지 않아도 회원 서비스는 그대로 이용할 수 있습니다.
+          </div>
+          <label class="check"><input type="checkbox" name="ipcNotify"> 위 내용에 동의하며, IPC 자격 갱신·교육 안내를 이메일과 문자로 받겠습니다. (선택)</label>
+          <div class="btns" style="margin-top:0"><button class="btn primary" type="submit">IPC 자격 저장</button></div>
         </form>
       </div>
       <form id="f-reg" hidden>
@@ -215,6 +234,72 @@ document.getElementById("f-signup").addEventListener("submit", async (e) => {
 });
 
 // 내 정보
+// ── IPC 자격 ──
+const IPC_TYPES = ["IPC-A-610", "IPC J-STD-001", "IPC/WHMA-A-620", "IPC-7711/7721", "IPC-A-600", "IPC-6012", "기타"];
+const IPC_MAX = 6;
+const ipcBox = document.getElementById("ipc-rows");
+const opt = (list, v) => list.map((x) => `<option${x === v ? " selected" : ""}>${x}</option>`).join("");
+function ymd(d) { const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+function ipcRow(x = {}) {
+  const div = document.createElement("div");
+  div.className = "ipc-row";
+  div.style.cssText = "border-top:1px solid var(--line);padding-top:14px;margin-bottom:6px";
+  const known = IPC_TYPES.includes(x.type) || !x.type;
+  div.innerHTML = `
+    <div class="cols">
+      <div class="row"><label>자격 종류</label><select data-k="type">${opt(IPC_TYPES, known ? x.type : "기타")}</select></div>
+      <div class="row"><label>기타 자격명 (기타 선택 시)</label><input type="text" data-k="typeEtc" maxlength="40" value="${known ? "" : String(x.type).replace(/"/g, "&quot;")}"></div>
+    </div>
+    <div class="cols">
+      <div class="row"><label>등급</label><select data-k="level">${opt(["CIS (Specialist)", "CIT (Trainer)", "CSE (Standards Expert)"], x.level)}</select></div>
+      <div class="row"><label>자격번호</label><input type="text" data-k="certNo" maxlength="40" value="${(x.certNo || "").replace(/"/g, "&quot;")}"></div>
+    </div>
+    <div class="cols">
+      <div class="row"><label>취득일(갱신일)</label><input type="date" data-k="issued" value="${x.issued || ""}"></div>
+      <div class="row"><label>만료일 (취득일 + 2년 자동 계산, 수정 가능)</label><input type="date" data-k="expires" value="${x.expires || ""}"></div>
+    </div>
+    <div style="text-align:right;margin-bottom:8px"><button class="btn ghost small" type="button" data-ipc-del>이 자격 삭제</button></div>`;
+  const issued = div.querySelector('[data-k=issued]'), expires = div.querySelector('[data-k=expires]');
+  issued.addEventListener("change", () => {
+    if (!issued.value) return;
+    const d = new Date(issued.value + "T00:00:00"); d.setFullYear(d.getFullYear() + 2);
+    expires.value = ymd(d);
+  });
+  div.querySelector("[data-ipc-del]").onclick = () => { div.remove(); syncIpcAdd(); };
+  ipcBox.appendChild(div); syncIpcAdd();
+}
+function syncIpcAdd() { document.getElementById("btn-ipc-add").disabled = ipcBox.children.length >= IPC_MAX; }
+document.getElementById("btn-ipc-add").onclick = () => { if (ipcBox.children.length < IPC_MAX) ipcRow(); };
+function readIpc() {
+  return [...ipcBox.querySelectorAll(".ipc-row")].map((r) => {
+    const g = (k) => r.querySelector(`[data-k=${k}]`).value.trim();
+    const type = g("type") === "기타" ? (g("typeEtc") || "기타") : g("type");
+    return { type, level: g("level"), certNo: g("certNo"), issued: g("issued"), expires: g("expires") };
+  }).filter((x) => x.issued || x.expires || x.certNo);
+}
+function fillIpc(m) {
+  ipcBox.innerHTML = "";
+  (m.ipc || []).forEach((x) => ipcRow(x));
+  if (!ipcBox.children.length) ipcRow();
+  document.querySelector("#f-ipc [name=ipcNotify]").checked = !!m.ipcNotify;
+}
+document.getElementById("f-ipc").addEventListener("submit", async (e) => {
+  e.preventDefault(); const fb = await getFirebase();
+  const ipc = readIpc();
+  if (ipc.some((x) => !x.expires)) { showMsg(msg, "각 자격의 취득일 또는 만료일을 입력해 주세요.", "err"); msg.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
+  const notify = e.target.elements.ipcNotify.checked;
+  if (ipc.length && !notify) { if (!confirm("갱신 안내 수신에 동의하지 않으면 자격 정보를 저장할 수 없습니다(수집 목적이 안내이기 때문). 자격 정보를 지우고 저장할까요?")) return; }
+  const data = notify && ipc.length
+    ? { ipc, ipcNotify: true, ipcNotifyAt: fb.F.serverTimestamp() }
+    : { ipc: [], ipcNotify: false, ipcNotifyAt: null };
+  try {
+    await fb.F.updateDoc(fb.F.doc(fb.db, "members", cur.user.uid), data);
+    Object.assign(cur.member, { ipc: data.ipc, ipcNotify: data.ipcNotify }); fillIpc(cur.member);
+    showMsg(msg, data.ipc.length ? `IPC 자격 ${data.ipc.length}건을 저장했습니다.` : "IPC 자격 정보를 비웠습니다.", "ok");
+  } catch (err) { showMsg(msg, koError(err), "err"); }
+  msg.scrollIntoView({ behavior: "smooth", block: "center" });
+});
+
 function renderMy() {
   const { user, member } = cur;
   document.getElementById("my-guest").hidden = !!user;
@@ -225,6 +310,7 @@ function renderMy() {
     document.getElementById("my-created").textContent = fmtDate(member.createdAt);
     document.getElementById("my-expire").textContent = fmtDate(member.expireAt) + "까지";
     fillProfile(document.getElementById("f-profile"), member);
+    fillIpc(member);
   }
 }
 
